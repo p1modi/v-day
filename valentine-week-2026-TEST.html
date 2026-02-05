@@ -494,106 +494,184 @@
         }
 
         // Challenge: Color Change (Rose Day)
-       function startColorChange(dayIndex) {
-            const gameArea = document.getElementById('gameArea');
-            const day = days[dayIndex];
-            
-            // Positive emojis to fill the screen
-            const positiveEmojis = ['☀️', '🧸', '🐕', '🌈', '⭐', '🦋', '🌻', '🍀', '🎈', '🌸', '🐱', '🦄', '🍦', '🎵', '💫', '🌺', '🍭', '🐰', '🌟', '🎀'];
-            const totalEmojis = 40;
-            let roseIndex = Math.floor(Math.random() * totalEmojis);
-            let emojisRemaining = totalEmojis;
-            let timerStarted = false;
-            let timeLeft = 30;
-            let timerInterval = null;
-            
-            // Create timer display
-            const timerDiv = document.createElement('div');
-            timerDiv.id = 'timer';
-            timerDiv.style.cssText = 'position:absolute;top:10px;right:10px;font-size:1.5rem;color:#6b4c8a;font-weight:bold;';
-            timerDiv.textContent = '⏱️ 30s';
-            gameArea.appendChild(timerDiv);
-            
-            // Create emoji grid
-            const grid = document.createElement('div');
-            grid.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;gap:5px;padding:20px;';
-            
-            for (let i = 0; i < totalEmojis; i++) {
-                const emojiDiv = document.createElement('div');
-                emojiDiv.className = 'emoji-item';
-                emojiDiv.style.cssText = 'font-size:2.5rem;cursor:pointer;transition:all 0.3s;padding:5px;';
+          function startColorChange(dayIndex) {
+                const gameArea = document.getElementById('gameArea');
+                const day = days[dayIndex];
                 
-                if (i === roseIndex) {
-                    emojiDiv.textContent = '🌹';
-                    emojiDiv.dataset.isRose = 'true';
-                } else {
-                    emojiDiv.textContent = positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)];
+                // Non-girly emojis: animals, nature, flowers, maps, symbols
+                const emojis = ['☀️', '🧸', '🐕', '🌈', '⭐', '🌻', '🍀', '🌸', '🐱', '🦁', '🐺', '🦊', '🐻', '🐼', '🐨', '🐯', '🦅', '🦉', '🐢', '🐬', '🐋', '🌍', '🌎', '🌏', '🗺️', '⛰️', '🌋', '🏔️', '🌲', '🌳', '🌴', '🌵', '🍁', '🍂', '🌾', '🌿', '☘️', '🪨', '💎', '🔥', '💧', '❄️', '⚡', '🌙', '☁️', '🌊', '🏵️', '🌷', '🌼', '🪻', '⚓', '🧭', '♠️', '♣️', '♥️', '♦️', '☯️', '⭕', '✳️', '❇️', '🔶', '🔷'];
+                
+                const totalEmojis = 120;
+                let timerStarted = false;
+                let timeLeft = 30;
+                let timerInterval = null;
+                let emojiElements = [];
+                
+                // Style game area for swiping
+                gameArea.style.position = 'relative';
+                gameArea.style.overflow = 'hidden';
+                gameArea.style.touchAction = 'none';
+                
+                // Create timer display (hidden until first swipe)
+                const timerDiv = document.createElement('div');
+                timerDiv.id = 'timer';
+                timerDiv.style.cssText = 'position:absolute;top:10px;right:10px;font-size:1.5rem;color:#6b4c8a;font-weight:bold;z-index:1000;opacity:0;transition:opacity 0.3s;';
+                timerDiv.textContent = '⏱️ 30s';
+                gameArea.appendChild(timerDiv);
+                
+                // Create the rose (will be at bottom layer)
+                const rose = document.createElement('div');
+                rose.style.cssText = 'position:absolute;font-size:4rem;z-index:1;pointer-events:none;transition:all 0.5s;';
+                rose.style.left = (30 + Math.random() * 40) + '%';
+                rose.style.top = (30 + Math.random() * 40) + '%';
+                rose.textContent = '🌹';
+                rose.dataset.isRose = 'true';
+                gameArea.appendChild(rose);
+                
+                // Create scattered emoji layers on top
+                for (let i = 0; i < totalEmojis; i++) {
+                    const emoji = document.createElement('div');
+                    emoji.className = 'scattered-emoji';
+                    emoji.style.cssText = 'position:absolute;font-size:' + (2 + Math.random() * 2) + 'rem;pointer-events:none;transition:all 0.4s ease-out;';
+                    emoji.style.left = (Math.random() * 90) + '%';
+                    emoji.style.top = (Math.random() * 85) + '%';
+                    emoji.style.zIndex = 10 + Math.floor(i / 10); // Layered z-index
+                    emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    emoji.dataset.layer = Math.floor(i / 10);
+                    gameArea.appendChild(emoji);
+                    emojiElements.push(emoji);
                 }
                 
-                emojiDiv.addEventListener('click', function(e) {
-                    // Start timer on first tap
+                // Shuffle array to randomize removal order
+                emojiElements.sort(() => Math.random() - 0.5);
+                
+                let removedCount = 0;
+                
+                function getRemovalCount() {
+                    // More emojis removed as time runs out
+                    const timeRatio = 1 - (timeLeft / 30);
+                    const baseRemoval = 2;
+                    const maxRemoval = 12;
+                    return Math.floor(baseRemoval + (maxRemoval - baseRemoval) * timeRatio);
+                }
+                
+                function removeEmojis(x, y) {
+                    const count = getRemovalCount();
+                    let removed = 0;
+                    
+                    for (let i = 0; i < emojiElements.length && removed < count; i++) {
+                        const emoji = emojiElements[i];
+                        if (emoji.style.opacity !== '0') {
+                            // Animate away from swipe point
+                            const rect = emoji.getBoundingClientRect();
+                            const areaRect = gameArea.getBoundingClientRect();
+                            const emojiX = rect.left - areaRect.left;
+                            const emojiY = rect.top - areaRect.top;
+                            
+                            const angle = Math.atan2(emojiY - y, emojiX - x);
+                            const distance = 200 + Math.random() * 100;
+                            const newX = emojiX + Math.cos(angle) * distance;
+                            const newY = emojiY + Math.sin(angle) * distance;
+                            
+                            emoji.style.transform = 'translate(' + (newX - emojiX) + 'px, ' + (newY - emojiY) + 'px) rotate(' + (Math.random() * 360) + 'deg)';
+                            emoji.style.opacity = '0';
+                            removed++;
+                            removedCount++;
+                        }
+                    }
+                    
+                    // Check if rose is revealed (most emojis gone)
+                    if (removedCount >= totalEmojis - 5) {
+                        rose.style.pointerEvents = 'auto';
+                        rose.style.cursor = 'pointer';
+                        rose.style.transform = 'scale(1.3)';
+                        rose.style.filter = 'drop-shadow(0 0 10px #ff69b4)';
+                        showMessage('There it is! Tap the 🌹');
+                    }
+                }
+                
+                // Handle swipe/touch
+                let lastX = 0, lastY = 0;
+                let isSwiping = false;
+                
+                function handleStart(e) {
+                    e.preventDefault();
+                    const point = e.touches ? e.touches[0] : e;
+                    const areaRect = gameArea.getBoundingClientRect();
+                    lastX = point.clientX - areaRect.left;
+                    lastY = point.clientY - areaRect.top;
+                    isSwiping = true;
+                    
+                    // Start timer on first interaction
                     if (!timerStarted) {
                         timerStarted = true;
+                        timerDiv.style.opacity = '1';
                         timerInterval = setInterval(function() {
                             timeLeft--;
                             timerDiv.textContent = '⏱️ ' + timeLeft + 's';
                             
-                            // Increase swiping effectiveness as time runs out
-                            if (timeLeft <= 10) {
-                                document.querySelectorAll('.emoji-item').forEach(function(el) {
-                                    el.style.fontSize = '3rem';
-                                });
+                            if (timeLeft <= 5 && removedCount < totalEmojis - 10) {
+                                // Help reveal if running out of time
+                                removeEmojis(gameArea.offsetWidth / 2, gameArea.offsetHeight / 2);
                             }
-                            if (timeLeft <= 5) {
-                                // Reveal rose area hint
-                                document.querySelectorAll('.emoji-item').forEach(function(el) {
-                                    if (el.dataset.isRose === 'true') {
-                                        el.style.transform = 'scale(1.2)';
-                                        el.style.boxShadow = '0 0 10px #ff69b4';
-                                    }
-                                });
-                            }
+                            
                             if (timeLeft <= 0) {
                                 clearInterval(timerInterval);
                                 // Auto-reveal rose
-                                document.querySelectorAll('.emoji-item').forEach(function(el) {
-                                    if (el.dataset.isRose !== 'true') {
-                                        el.style.opacity = '0.2';
-                                    }
+                                emojiElements.forEach(function(el) {
+                                    el.style.opacity = '0';
                                 });
+                                rose.style.pointerEvents = 'auto';
+                                rose.style.cursor = 'pointer';
+                                rose.style.transform = 'scale(1.5)';
+                                showMessage('Tap the 🌹!');
                             }
                         }, 1000);
                     }
+                }
+                
+                function handleMove(e) {
+                    if (!isSwiping) return;
+                    e.preventDefault();
+                    const point = e.touches ? e.touches[0] : e;
+                    const areaRect = gameArea.getBoundingClientRect();
+                    const x = point.clientX - areaRect.left;
+                    const y = point.clientY - areaRect.top;
                     
-                    if (this.dataset.isRose === 'true') {
-                        // Found the rose!
+                    // Only remove on significant movement
+                    const dist = Math.sqrt((x - lastX) ** 2 + (y - lastY) ** 2);
+                    if (dist > 20) {
+                        removeEmojis(x, y);
+                        lastX = x;
+                        lastY = y;
+                    }
+                }
+                
+                function handleEnd() {
+                    isSwiping = false;
+                }
+                
+                gameArea.addEventListener('mousedown', handleStart);
+                gameArea.addEventListener('mousemove', handleMove);
+                gameArea.addEventListener('mouseup', handleEnd);
+                gameArea.addEventListener('touchstart', handleStart, { passive: false });
+                gameArea.addEventListener('touchmove', handleMove, { passive: false });
+                gameArea.addEventListener('touchend', handleEnd);
+                
+                // Rose click handler
+                rose.addEventListener('click', function(e) {
+                    if (rose.style.pointerEvents === 'auto') {
                         clearInterval(timerInterval);
                         createHearts(e.clientX, e.clientY);
-                        this.style.animation = 'heartbeat 0.5s ease';
+                        rose.style.animation = 'heartbeat 0.5s ease';
                         setTimeout(function() {
                             collectSprite(dayIndex);
                         }, 500);
-                    } else {
-                        // Calculate removal chance based on time
-                        let removalChance = 0.3 + (0.7 * (1 - timeLeft / 30)); // 30% to 100%
-                        if (Math.random() < removalChance) {
-                            this.style.transform = 'scale(0)';
-                            this.style.opacity = '0';
-                            setTimeout(() => { this.style.visibility = 'hidden'; }, 300);
-                            emojisRemaining--;
-                        } else {
-                            this.style.transform = 'scale(0.9)';
-                            setTimeout(() => { this.style.transform = 'scale(1)'; }, 150);
-                        }
                     }
                 });
                 
-                grid.appendChild(emojiDiv);
+                showMessage('Swipe to clear the emojis!');
             }
-            
-            gameArea.appendChild(grid);
-            showMessage('Find the 🌹 hidden among the emojis!');
-        }
 
         // Challenge: Run Away (Propose Day)
        function startRunAway(dayIndex) {
