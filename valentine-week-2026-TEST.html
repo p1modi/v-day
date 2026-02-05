@@ -494,76 +494,264 @@
         }
 
         // Challenge: Color Change (Rose Day)
-        function startColorChange(dayIndex) {
+       function startColorChange(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
-            const colors = ['🌹', '🌻', '🌸', '🌹'];
-            let currentColor = 0;
             
-            const sprite = document.createElement('div');
-            sprite.className = 'sprite';
-            sprite.textContent = colors[currentColor];
-            sprite.style.left = '50%';
-            sprite.style.top = '50%';
-            sprite.style.transform = 'translate(-50%, -50%)';
+            // Positive emojis to fill the screen
+            const positiveEmojis = ['☀️', '🧸', '🐕', '🌈', '⭐', '🦋', '🌻', '🍀', '🎈', '🌸', '🐱', '🦄', '🍦', '🎵', '💫', '🌺', '🍭', '🐰', '🌟', '🎀'];
+            const totalEmojis = 40;
+            let roseIndex = Math.floor(Math.random() * totalEmojis);
+            let emojisRemaining = totalEmojis;
+            let timerStarted = false;
+            let timeLeft = 30;
+            let timerInterval = null;
             
-            gameArea.appendChild(sprite);
+            // Create timer display
+            const timerDiv = document.createElement('div');
+            timerDiv.id = 'timer';
+            timerDiv.style.cssText = 'position:absolute;top:10px;right:10px;font-size:1.5rem;color:#6b4c8a;font-weight:bold;';
+            timerDiv.textContent = '⏱️ 30s';
+            gameArea.appendChild(timerDiv);
             
-            const interval = setInterval(() => {
-                currentColor = (currentColor + 1) % colors.length;
-                sprite.textContent = colors[currentColor];
-            }, 800);
+            // Create emoji grid
+            const grid = document.createElement('div');
+            grid.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;gap:5px;padding:20px;';
             
-            sprite.addEventListener('click', (e) => {
-                if (sprite.textContent === '🌹') {
-                    clearInterval(interval);
-                    createHearts(e.clientX, e.clientY);
-                    sprite.style.animation = 'spin 0.5s ease';
-                    setTimeout(() => {
-                        sprite.remove();
-                        collectSprite(dayIndex);
-                    }, 500);
+            for (let i = 0; i < totalEmojis; i++) {
+                const emojiDiv = document.createElement('div');
+                emojiDiv.className = 'emoji-item';
+                emojiDiv.style.cssText = 'font-size:2.5rem;cursor:pointer;transition:all 0.3s;padding:5px;';
+                
+                if (i === roseIndex) {
+                    emojiDiv.textContent = '🌹';
+                    emojiDiv.dataset.isRose = 'true';
                 } else {
-                    showMessage(day.messages.wrong);
+                    emojiDiv.textContent = positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)];
                 }
-            });
+                
+                emojiDiv.addEventListener('click', function(e) {
+                    // Start timer on first tap
+                    if (!timerStarted) {
+                        timerStarted = true;
+                        timerInterval = setInterval(function() {
+                            timeLeft--;
+                            timerDiv.textContent = '⏱️ ' + timeLeft + 's';
+                            
+                            // Increase swiping effectiveness as time runs out
+                            if (timeLeft <= 10) {
+                                document.querySelectorAll('.emoji-item').forEach(function(el) {
+                                    el.style.fontSize = '3rem';
+                                });
+                            }
+                            if (timeLeft <= 5) {
+                                // Reveal rose area hint
+                                document.querySelectorAll('.emoji-item').forEach(function(el) {
+                                    if (el.dataset.isRose === 'true') {
+                                        el.style.transform = 'scale(1.2)';
+                                        el.style.boxShadow = '0 0 10px #ff69b4';
+                                    }
+                                });
+                            }
+                            if (timeLeft <= 0) {
+                                clearInterval(timerInterval);
+                                // Auto-reveal rose
+                                document.querySelectorAll('.emoji-item').forEach(function(el) {
+                                    if (el.dataset.isRose !== 'true') {
+                                        el.style.opacity = '0.2';
+                                    }
+                                });
+                            }
+                        }, 1000);
+                    }
+                    
+                    if (this.dataset.isRose === 'true') {
+                        // Found the rose!
+                        clearInterval(timerInterval);
+                        createHearts(e.clientX, e.clientY);
+                        this.style.animation = 'heartbeat 0.5s ease';
+                        setTimeout(function() {
+                            collectSprite(dayIndex);
+                        }, 500);
+                    } else {
+                        // Calculate removal chance based on time
+                        let removalChance = 0.3 + (0.7 * (1 - timeLeft / 30)); // 30% to 100%
+                        if (Math.random() < removalChance) {
+                            this.style.transform = 'scale(0)';
+                            this.style.opacity = '0';
+                            setTimeout(() => { this.style.visibility = 'hidden'; }, 300);
+                            emojisRemaining--;
+                        } else {
+                            this.style.transform = 'scale(0.9)';
+                            setTimeout(() => { this.style.transform = 'scale(1)'; }, 150);
+                        }
+                    }
+                });
+                
+                grid.appendChild(emojiDiv);
+            }
+            
+            gameArea.appendChild(grid);
+            showMessage('Find the 🌹 hidden among the emojis!');
         }
 
         // Challenge: Run Away (Propose Day)
-        function startRunAway(dayIndex) {
-            const gameArea = document.getElementById('gameArea');
-            const day = days[dayIndex];
-            const rect = gameArea.getBoundingClientRect();
-            
-            const sprite = document.createElement('div');
-            sprite.className = 'sprite';
-            sprite.textContent = day.emoji;
-            sprite.style.left = '50%';
-            sprite.style.top = '50%';
-            
-            gameArea.appendChild(sprite);
-            
-            let moveCount = 0;
-            
-            sprite.addEventListener('click', (e) => {
-                if (moveCount < 5) {
-                    moveCount++;
-                    const newX = Math.random() * (rect.width - 80);
-                    const newY = Math.random() * (rect.height - 80);
-                    sprite.style.left = newX + 'px';
-                    sprite.style.top = newY + 'px';
-                    sprite.style.transition = 'all 0.3s ease';
-                    showMessage(moveCount < 3 ? day.messages.miss : day.messages.running);
-                } else {
-                    createConfetti(e.clientX, e.clientY);
-                    sprite.style.animation = 'heartbeat 0.5s ease';
-                    setTimeout(() => {
-                        sprite.remove();
-                        collectSprite(dayIndex);
-                    }, 500);
+       function startRunAway(dayIndex) {
+                const gameArea = document.getElementById('gameArea');
+                const day = days[dayIndex];
+                const rect = gameArea.getBoundingClientRect();
+                
+                let stage = 0;
+                // Stages: 0=initial, 1=said hi, 2=disappeared first time, 3=thinking, 4=disappeared second time, 5=chasing, 6=center proposal, 7=ring appears
+                
+                const guy = document.createElement('div');
+                guy.className = 'sprite';
+                guy.textContent = '🙇🏽‍♂️';
+                guy.style.left = '50%';
+                guy.style.top = '50%';
+                guy.style.transform = 'translate(-50%, -50%)';
+                gameArea.appendChild(guy);
+                
+                // Speech bubble
+                const bubble = document.createElement('div');
+                bubble.style.cssText = 'position:absolute;background:white;padding:10px 15px;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,0.2);font-size:1.1rem;color:#6b4c8a;opacity:0;transition:opacity 0.3s;z-index:100;white-space:nowrap;';
+                gameArea.appendChild(bubble);
+                
+                function showBubble(text, targetEl) {
+                    bubble.textContent = text;
+                    bubble.style.opacity = '1';
+                    const guyRect = targetEl.getBoundingClientRect();
+                    const areaRect = gameArea.getBoundingClientRect();
+                    bubble.style.left = (guyRect.left - areaRect.left + 40) + 'px';
+                    bubble.style.top = (guyRect.top - areaRect.top - 50) + 'px';
                 }
-            });
-        }
+                
+                function hideBubble() {
+                    bubble.style.opacity = '0';
+                }
+                
+                function moveGuyRandom() {
+                    const newX = 50 + Math.random() * (rect.width - 150);
+                    const newY = 80 + Math.random() * (rect.height - 200);
+                    guy.style.left = newX + 'px';
+                    guy.style.top = newY + 'px';
+                    guy.style.transform = 'translate(0, 0)';
+                }
+                
+                let chaseCount = 0;
+                let tapCount = 0;
+                
+                // Handle taps on empty area (for stage 2)
+                gameArea.addEventListener('click', function(e) {
+                    if (e.target === gameArea && stage === 2) {
+                        tapCount++;
+                        if (tapCount >= 3) {
+                            // Reappear
+                            stage = 3;
+                            tapCount = 0;
+                            guy.style.opacity = '1';
+                            moveGuyRandom();
+                        }
+                    }
+                });
+                
+                guy.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    if (stage === 0) {
+                        // First tap - say hi
+                        showBubble('Hi', guy);
+                        stage = 1;
+                        setTimeout(function() {
+                            hideBubble();
+                            setTimeout(function() {
+                                guy.style.opacity = '0';
+                                stage = 2;
+                                showMessage('Where did he go? Tap around...');
+                            }, 500);
+                        }, 1500);
+                        
+                    } else if (stage === 3) {
+                        // Second appearance - thinking
+                        showBubble('I was thinking....', guy);
+                        stage = 4;
+                        setTimeout(function() {
+                            hideBubble();
+                            setTimeout(function() {
+                                guy.style.opacity = '0';
+                                setTimeout(function() {
+                                    guy.style.opacity = '1';
+                                    moveGuyRandom();
+                                    stage = 5;
+                                    showMessage('Catch him!');
+                                }, 800);
+                            }, 500);
+                        }, 2000);
+                        
+                    } else if (stage === 5) {
+                        // Chase stage
+                        chaseCount++;
+                        if (chaseCount < 5) {
+                            moveGuyRandom();
+                            guy.style.transition = 'all 0.3s ease';
+                            showMessage(chaseCount < 3 ? 'Almost!' : 'So close!');
+                        } else {
+                            // Move to center for proposal
+                            stage = 6;
+                            guy.style.left = '50%';
+                            guy.style.top = '40%';
+                            guy.style.transform = 'translate(-50%, -50%)';
+                            showMessage('');
+                        }
+                        
+                    } else if (stage === 6) {
+                        // Proposal
+                        showBubble('Be mine? 💕', guy);
+                        stage = 7;
+                        
+                        // Show ring
+                        setTimeout(function() {
+                            const ring = document.createElement('div');
+                            ring.className = 'sprite';
+                            ring.textContent = '💍';
+                            ring.style.left = '70%';
+                            ring.style.top = '50%';
+                            ring.style.fontSize = '3rem';
+                            ring.style.animation = 'heartbeat 1s ease infinite';
+                            gameArea.appendChild(ring);
+                            
+                            ring.addEventListener('click', function(ev) {
+                                ev.stopPropagation();
+                                hideBubble();
+                                guy.remove();
+                                ring.remove();
+                                
+                                // Show married couple
+                                const couple = document.createElement('div');
+                                couple.className = 'sprite';
+                                couple.textContent = '👫';
+                                couple.style.left = '50%';
+                                couple.style.top = '50%';
+                                couple.style.transform = 'translate(-50%, -50%)';
+                                couple.style.fontSize = '5rem';
+                                gameArea.appendChild(couple);
+                                
+                                createHearts(ev.clientX, ev.clientY);
+                                createParticles(ev.clientX, ev.clientY);
+                                
+                                setTimeout(function() {
+                                    collectSprite(dayIndex);
+                                }, 1500);
+                            });
+                            
+                            showMessage('Tap the ring! 💍');
+                        }, 1000);
+                    }
+                });
+                
+                // No initial instruction - let user discover
+                showMessage('');
+            }
 
         // Challenge: Melt (Chocolate Day)
         function startMelt(dayIndex) {
