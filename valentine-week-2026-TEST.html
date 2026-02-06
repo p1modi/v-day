@@ -20,9 +20,10 @@
             flex-direction: column;
             align-items: center;
             padding: 20px;
+            padding-top: 50px;
+            padding-bottom: 60px;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            position: relative;
         }
 
         .test-banner {
@@ -45,7 +46,7 @@
             text-align: center;
             position: relative;
             z-index: 10;
-            margin-top: 40px;
+            margin-top: 10px;
         }
 
         h1 {
@@ -107,7 +108,7 @@
             background: rgba(255, 255, 255, 0.6);
             border-radius: 20px;
             padding: 40px 20px;
-            min-height: 400px;
+            min-height: 350px;
             position: relative;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(107, 76, 138, 0.2);
@@ -174,59 +175,6 @@
             pointer-events: none;
         }
 
-        .memory-view {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-top: 30px;
-        }
-
-        .memory-card {
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(107, 76, 138, 0.15);
-        }
-
-        .memory-card .sprite-display {
-            font-size: 3rem;
-            margin-bottom: 10px;
-        }
-
-        .memory-card .day-name {
-            color: #6b4c8a;
-            font-size: 0.9rem;
-            font-weight: bold;
-        }
-
-        .memory-card.collected {
-            background: linear-gradient(135deg, #e8dfd0 0%, #d4c5b9 100%);
-        }
-
-        .memory-card.locked {
-            opacity: 0.4;
-            filter: grayscale(100%);
-        }
-
-        .button {
-            background: #6b4c8a;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 1rem;
-            margin: 10px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(107, 76, 138, 0.3);
-            transition: all 0.3s;
-            font-family: 'Georgia', serif;
-        }
-
-        .button:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 8px rgba(107, 76, 138, 0.3);
-        }
-
         .reset-button {
             position: fixed;
             bottom: 10px;
@@ -238,16 +186,6 @@
             border-radius: 15px;
             font-size: 0.7rem;
             z-index: 1000;
-        }
-
-        .week-over-container {
-            text-align: center;
-        }
-
-        .week-over-title {
-            color: #6b4c8a;
-            font-size: 1.5rem;
-            margin-bottom: 20px;
         }
 
         @keyframes float {
@@ -268,10 +206,6 @@
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-30px); }
-        }
-
-        .hide {
-            display: none !important;
         }
     </style>
 </head>
@@ -300,24 +234,24 @@
                 date: new Date('2026-02-07'),
                 name: "Rose Day",
                 emoji: "🌹",
-                instruction: "Catch the rose when it turns red!",
+                instruction: "Find the rose!",
                 challenge: "colorChange",
                 messages: {
-                    wrong: "Wrong color! Wait for romance!",
-                    miss: "Catch me if you can!",
-                    success: "You caught me at my most beautiful! 🌹"
+                    wrong: "Keep looking!",
+                    miss: "Where is it?",
+                    success: "Happy Rose Day babe! ❤️"
                 }
             },
             {
                 date: new Date('2026-02-08'),
                 name: "Propose Day",
                 emoji: "💍",
-                instruction: "The ring is nervous! Catch it before it runs away!",
+                instruction: "",
                 challenge: "runAway",
                 messages: {
                     miss: "Will you... wait, I'm nervous!",
                     running: "Getting cold feet here!",
-                    success: "Okay okay, you caught me! 💍"
+                    success: "Together forever! 💍"
                 }
             },
             {
@@ -394,7 +328,6 @@
             }
         ];
 
-        let currentDay = null;
         let gameState = {
             collected: JSON.parse(localStorage.getItem('valentineCollectedTest') || '[]'),
             currentChallenge: null
@@ -420,7 +353,7 @@
             }
         }
 
-        function createParticles(x, y, type = 'confetti') {
+        function createParticles(x, y) {
             const gameArea = document.getElementById('gameArea');
             const colors = ['#6b4c8a', '#8b7aa8', '#d4c5b9', '#f5f1e8', '#ffd700'];
             
@@ -430,21 +363,18 @@
                 particle.style.left = x + 'px';
                 particle.style.top = y + 'px';
                 particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-                
                 const angle = (Math.PI * 2 * i) / 30;
                 const velocity = 50 + Math.random() * 100;
                 const tx = Math.cos(angle) * velocity;
                 const ty = Math.sin(angle) * velocity;
-                
                 gameArea.appendChild(particle);
-                
                 particle.animate([
                     { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
-                    { transform: `translate(${tx}px, ${ty}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+                    { transform: 'translate(' + tx + 'px, ' + ty + 'px) rotate(' + (Math.random() * 720) + 'deg)', opacity: 0 }
                 ], {
                     duration: 1000 + Math.random() * 500,
                     easing: 'cubic-bezier(0, .9, .57, 1)'
-                }).onfinish = () => particle.remove();
+                }).onfinish = function() { particle.remove(); };
             }
         }
 
@@ -458,19 +388,16 @@
                 heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
                 heart.style.left = x + 'px';
                 heart.style.top = y + 'px';
-                
                 gameArea.appendChild(heart);
-                
                 const tx = (Math.random() - 0.5) * 200;
                 const ty = -100 - Math.random() * 100;
-                
                 heart.animate([
                     { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-                    { transform: `translate(${tx}px, ${ty}px) scale(0.5)`, opacity: 0 }
+                    { transform: 'translate(' + tx + 'px, ' + ty + 'px) scale(0.5)', opacity: 0 }
                 ], {
                     duration: 1500,
                     easing: 'ease-out'
-                }).onfinish = () => heart.remove();
+                }).onfinish = function() { heart.remove(); };
             }
         }
 
@@ -484,391 +411,359 @@
             const day = days[dayIndex];
             showSuccessMessage(day.messages.success);
             
-            setTimeout(() => {
+            setTimeout(function() {
                 const gameArea = document.getElementById('gameArea');
-                gameArea.innerHTML = `
-                    <div class="instruction">Great job! 🎉</div>
-                    <div class="message">Select another day to test more challenges!</div>
-                `;
+                gameArea.innerHTML = '<div class="instruction">Great job! 🎉</div><div class="message">Select another day to test more challenges!</div>';
             }, 3000);
         }
 
-        // Challenge: Color Change (Rose Day)
-         function startColorChange(dayIndex) {
-                const gameArea = document.getElementById('gameArea');
-                const day = days[dayIndex];
+        // Rose Day - Swipe to find the rose
+        function startColorChange(dayIndex) {
+            const gameArea = document.getElementById('gameArea');
+            const day = days[dayIndex];
+            
+            let introStage = 0;
+            
+            gameArea.innerHTML = '<div class="instruction" id="instruction" style="font-size:1.8rem;margin-top:100px;">Happy Rose Day! 🌹</div><div class="message" id="message"></div>';
+            
+            gameArea.addEventListener('click', handleIntroTap);
+            
+            function handleIntroTap() {
+                introStage++;
                 
-                let introStage = 0;
-                
-                // Stage 0: Show "Happy Rose Day!"
-                gameArea.innerHTML = '<div class="instruction" id="instruction" style="font-size:1.8rem;margin-top:100px;">Happy Rose Day! 🌹</div><div class="message" id="message">Tap to continue</div>';
-                
-                gameArea.addEventListener('click', handleIntroTap);
-                
-                function handleIntroTap() {
-                    introStage++;
-                    
-                    if (introStage === 1) {
-                        // Stage 1: Show "But where's your rose?"
-                        document.getElementById('instruction').textContent = "But where's your rose?";
-                        document.getElementById('instruction').style.fontSize = '1.5rem';
-                        document.getElementById('instruction').style.marginTop = '0';
-                        document.getElementById('message').textContent = 'Tap to find out';
-                    } else if (introStage === 2) {
-                        // Stage 2: Start the game
-                        gameArea.removeEventListener('click', handleIntroTap);
-                        startEmojiGame();
-                    }
-                }
-                
-                function startEmojiGame() {
-                    // Non-girly emojis: animals, nature, flowers, maps, symbols
-                    const emojis = ['☀️', '🧸', '🐕', '🌈', '⭐', '🌻', '🍀', '🌸', '🐱', '🦁', '🐺', '🦊', '🐻', '🐼', '🐨', '🐯', '🦅', '🦉', '🐢', '🐬', '🐋', '🌍', '🌎', '🌏', '🗺️', '⛰️', '🌋', '🏔️', '🌲', '🌳', '🌴', '🌵', '🍁', '🍂', '🌾', '🌿', '☘️', '🪨', '💎', '🔥', '💧', '❄️', '⚡', '🌙', '☁️', '🌊', '🏵️', '🌷', '🌼', '🪻', '⚓', '🧭', '♠️', '♣️', '♥️', '♦️', '☯️', '⭕', '✳️', '❇️', '🔶', '🔷'];
-                    
-                    const totalEmojis = 240;
-                    let timerStarted = false;
-                    let timeLeft = 30;
-                    let timerInterval = null;
-                    let emojiElements = [];
-                    
-                    // Setup game area
-                    gameArea.innerHTML = '';
-                    gameArea.style.position = 'relative';
-                    gameArea.style.overflow = 'hidden';
-                    gameArea.style.touchAction = 'none';
-                    
-                    // Header area
-                    const header = document.createElement('div');
-                    header.style.cssText = 'position:relative;z-index:1001;padding:10px;text-align:center;';
-                    header.innerHTML = '<div class="instruction" id="instruction">But where\'s your rose?</div><div class="message" id="message">Swipe to clear the emojis!</div>';
-                    gameArea.appendChild(header);
-                    
-                    // Timer display (hidden until first swipe)
-                    const timerDiv = document.createElement('div');
-                    timerDiv.id = 'timer';
-                    timerDiv.style.cssText = 'position:absolute;top:10px;right:10px;font-size:1.3rem;color:#6b4c8a;font-weight:bold;z-index:1002;opacity:0;transition:opacity 0.3s;';
-                    timerDiv.textContent = '⏱️ 30s';
-                    gameArea.appendChild(timerDiv);
-                    
-                    // Emoji container (below header)
-                    const emojiContainer = document.createElement('div');
-                    emojiContainer.id = 'emojiContainer';
-                    emojiContainer.style.cssText = 'position:absolute;top:80px;left:0;right:0;bottom:0;overflow:hidden;';
-                    gameArea.appendChild(emojiContainer);
-                    
-                    const containerHeight = gameArea.offsetHeight - 80;
-                    const containerWidth = gameArea.offsetWidth;
-                    
-                    // Create the rose (will be at bottom layer)
-                    const rose = document.createElement('div');
-                    rose.style.cssText = 'position:absolute;font-size:4rem;z-index:1;pointer-events:none;transition:all 0.5s;';
-                    rose.style.left = (20 + Math.random() * 50) + '%';
-                    rose.style.top = (20 + Math.random() * 50) + '%';
-                    rose.textContent = '🌹';
-                    rose.dataset.isRose = 'true';
-                    emojiContainer.appendChild(rose);
-                    
-                    // Create scattered emoji layers on top
-                    for (let i = 0; i < totalEmojis; i++) {
-                        const emoji = document.createElement('div');
-                        emoji.className = 'scattered-emoji';
-                        const size = 1.5 + Math.random() * 1.5;
-                        emoji.style.cssText = 'position:absolute;font-size:' + size + 'rem;pointer-events:none;transition:all 0.4s ease-out;';
-                        emoji.style.left = (Math.random() * 85) + '%';
-                        emoji.style.top = (Math.random() * 85) + '%';
-                        emoji.style.zIndex = 10 + Math.floor(i / 20);
-                        emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-                        emojiContainer.appendChild(emoji);
-                        emojiElements.push(emoji);
-                    }
-                    
-                    // Shuffle array to randomize removal order
-                    emojiElements.sort(() => Math.random() - 0.5);
-                    
-                    let removedCount = 0;
-                    
-                    function getRemovalCount() {
-                        // Start with 1-2, increase as time runs out
-                        const timeRatio = 1 - (timeLeft / 30);
-                        if (timeRatio < 0.2) return Math.random() < 0.5 ? 1 : 2;
-                        if (timeRatio < 0.4) return 2 + Math.floor(Math.random() * 2);
-                        if (timeRatio < 0.6) return 4 + Math.floor(Math.random() * 3);
-                        if (timeRatio < 0.8) return 8 + Math.floor(Math.random() * 4);
-                        return 15 + Math.floor(Math.random() * 5);
-                    }
-                    
-                    function removeEmojis(x, y) {
-                        const count = getRemovalCount();
-                        let removed = 0;
-                        
-                        for (let i = 0; i < emojiElements.length && removed < count; i++) {
-                            const emoji = emojiElements[i];
-                            if (emoji.style.opacity !== '0') {
-                                const rect = emoji.getBoundingClientRect();
-                                const containerRect = emojiContainer.getBoundingClientRect();
-                                const emojiX = rect.left - containerRect.left;
-                                const emojiY = rect.top - containerRect.top;
-                                
-                                const angle = Math.atan2(emojiY - y, emojiX - x);
-                                const distance = 200 + Math.random() * 100;
-                                const newX = Math.cos(angle) * distance;
-                                const newY = Math.sin(angle) * distance;
-                                
-                                emoji.style.transform = 'translate(' + newX + 'px, ' + newY + 'px) rotate(' + (Math.random() * 360) + 'deg)';
-                                emoji.style.opacity = '0';
-                                removed++;
-                                removedCount++;
-                            }
-                        }
-                        
-                        // Check if rose is revealed
-                        if (removedCount >= totalEmojis - 10) {
-                            rose.style.pointerEvents = 'auto';
-                            rose.style.cursor = 'pointer';
-                            rose.style.transform = 'scale(1.3)';
-                            rose.style.filter = 'drop-shadow(0 0 15px #ff69b4)';
-                            showMessage('There it is! Tap the 🌹');
-                        }
-                    }
-                    
-                    // Handle swipe/touch
-                    let lastX = 0, lastY = 0;
-                    let isSwiping = false;
-                    
-                    function handleStart(e) {
-                        e.preventDefault();
-                        const point = e.touches ? e.touches[0] : e;
-                        const containerRect = emojiContainer.getBoundingClientRect();
-                        lastX = point.clientX - containerRect.left;
-                        lastY = point.clientY - containerRect.top;
-                        isSwiping = true;
-                        
-                        if (!timerStarted) {
-                            timerStarted = true;
-                            timerDiv.style.opacity = '1';
-                            timerInterval = setInterval(function() {
-                                timeLeft--;
-                                timerDiv.textContent = '⏱️ ' + timeLeft + 's';
-                                
-                                if (timeLeft <= 5 && removedCount < totalEmojis - 20) {
-                                    removeEmojis(containerWidth / 2, containerHeight / 2);
-                                }
-                                
-                                if (timeLeft <= 0) {
-                                    clearInterval(timerInterval);
-                                    emojiElements.forEach(function(el) {
-                                        el.style.opacity = '0';
-                                    });
-                                    rose.style.pointerEvents = 'auto';
-                                    rose.style.cursor = 'pointer';
-                                    rose.style.transform = 'scale(1.5)';
-                                    rose.style.filter = 'drop-shadow(0 0 20px #ff69b4)';
-                                    showMessage('Tap the 🌹!');
-                                }
-                            }, 1000);
-                        }
-                    }
-                    
-                    function handleMove(e) {
-                        if (!isSwiping) return;
-                        e.preventDefault();
-                        const point = e.touches ? e.touches[0] : e;
-                        const containerRect = emojiContainer.getBoundingClientRect();
-                        const x = point.clientX - containerRect.left;
-                        const y = point.clientY - containerRect.top;
-                        
-                        const dist = Math.sqrt((x - lastX) ** 2 + (y - lastY) ** 2);
-                        if (dist > 15) {
-                            removeEmojis(x, y);
-                            lastX = x;
-                            lastY = y;
-                        }
-                    }
-                    
-                    function handleEnd() {
-                        isSwiping = false;
-                    }
-                    
-                    emojiContainer.addEventListener('mousedown', handleStart);
-                    emojiContainer.addEventListener('mousemove', handleMove);
-                    emojiContainer.addEventListener('mouseup', handleEnd);
-                    emojiContainer.addEventListener('mouseleave', handleEnd);
-                    emojiContainer.addEventListener('touchstart', handleStart, { passive: false });
-                    emojiContainer.addEventListener('touchmove', handleMove, { passive: false });
-                    emojiContainer.addEventListener('touchend', handleEnd);
-                    
-                    rose.addEventListener('click', function(e) {
-                        if (rose.style.pointerEvents === 'auto') {
-                            clearInterval(timerInterval);
-                            createHearts(e.clientX, e.clientY);
-                            rose.style.animation = 'heartbeat 0.5s ease';
-                            setTimeout(function() {
-                                collectSprite(dayIndex);
-                            }, 500);
-                        }
-                    });
+                if (introStage === 1) {
+                    document.getElementById('instruction').textContent = "But where's your rose?";
+                    document.getElementById('instruction').style.fontSize = '1.5rem';
+                    document.getElementById('instruction').style.marginTop = '0';
+                } else if (introStage === 2) {
+                    gameArea.removeEventListener('click', handleIntroTap);
+                    startEmojiGame();
                 }
             }
-
-        // Challenge: Run Away (Propose Day)
-       function startRunAway(dayIndex) {
-                const gameArea = document.getElementById('gameArea');
-                const day = days[dayIndex];
-                const rect = gameArea.getBoundingClientRect();
+            
+            function startEmojiGame() {
+                const emojis = ['☀️', '🧸', '🐕', '🌈', '⭐', '🌻', '🍀', '🌸', '🐱', '🦁', '🐺', '🦊', '🐻', '🐼', '🐨', '🐯', '🦅', '🦉', '🐢', '🐬', '🐋', '🌍', '🌎', '🌏', '🗺️', '⛰️', '🌋', '🏔️', '🌲', '🌳', '🌴', '🌵', '🍁', '🍂', '🌾', '🌿', '☘️', '🪨', '💎', '🔥', '💧', '❄️', '⚡', '🌙', '☁️', '🌊', '🏵️', '🌷', '🌼', '🪻', '⚓', '🧭', '♠️', '♣️', '♥️', '♦️', '☯️', '⭕', '✳️', '❇️', '🔶', '🔷'];
                 
-                let stage = 0;
-                // Stages: 0=initial, 1=said hi, 2=disappeared first time, 3=thinking, 4=disappeared second time, 5=chasing, 6=center proposal, 7=ring appears
+                const totalEmojis = 240;
+                let timerStarted = false;
+                let timeLeft = 30;
+                let timerInterval = null;
+                let emojiElements = [];
                 
-                const guy = document.createElement('div');
-                guy.className = 'sprite';
-                guy.textContent = '🙇🏽‍♂️';
-                guy.style.left = '50%';
-                guy.style.top = '50%';
-                guy.style.transform = 'translate(-50%, -50%)';
-                gameArea.appendChild(guy);
+                gameArea.innerHTML = '';
+                gameArea.style.position = 'relative';
+                gameArea.style.overflow = 'hidden';
+                gameArea.style.touchAction = 'none';
                 
-                // Speech bubble
-                const bubble = document.createElement('div');
-                bubble.style.cssText = 'position:absolute;background:white;padding:10px 15px;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,0.2);font-size:1.1rem;color:#6b4c8a;opacity:0;transition:opacity 0.3s;z-index:100;white-space:nowrap;';
-                gameArea.appendChild(bubble);
+                const header = document.createElement('div');
+                header.style.cssText = 'position:relative;z-index:1001;padding:10px;text-align:center;';
+                header.innerHTML = '<div class="instruction" id="instruction">But where\'s your rose?</div><div class="message" id="message"></div>';
+                gameArea.appendChild(header);
                 
-                function showBubble(text, targetEl) {
-                    bubble.textContent = text;
-                    bubble.style.opacity = '1';
-                    const guyRect = targetEl.getBoundingClientRect();
-                    const areaRect = gameArea.getBoundingClientRect();
-                    bubble.style.left = (guyRect.left - areaRect.left + 40) + 'px';
-                    bubble.style.top = (guyRect.top - areaRect.top - 50) + 'px';
+                const timerDiv = document.createElement('div');
+                timerDiv.id = 'timer';
+                timerDiv.style.cssText = 'position:absolute;top:10px;right:10px;font-size:1.3rem;color:#6b4c8a;font-weight:bold;z-index:1002;opacity:0;transition:opacity 0.3s;';
+                timerDiv.textContent = '⏱️ 30s';
+                gameArea.appendChild(timerDiv);
+                
+                const emojiContainer = document.createElement('div');
+                emojiContainer.id = 'emojiContainer';
+                emojiContainer.style.cssText = 'position:absolute;top:80px;left:0;right:0;bottom:0;overflow:hidden;';
+                gameArea.appendChild(emojiContainer);
+                
+                const containerHeight = gameArea.offsetHeight - 80;
+                const containerWidth = gameArea.offsetWidth;
+                
+                const rose = document.createElement('div');
+                rose.style.cssText = 'position:absolute;font-size:4rem;z-index:1;pointer-events:none;transition:all 0.5s;';
+                rose.style.left = (20 + Math.random() * 50) + '%';
+                rose.style.top = (20 + Math.random() * 50) + '%';
+                rose.textContent = '🌹';
+                rose.dataset.isRose = 'true';
+                emojiContainer.appendChild(rose);
+                
+                for (let i = 0; i < totalEmojis; i++) {
+                    const emoji = document.createElement('div');
+                    emoji.className = 'scattered-emoji';
+                    const size = 1.5 + Math.random() * 1.5;
+                    emoji.style.cssText = 'position:absolute;font-size:' + size + 'rem;pointer-events:none;transition:all 0.4s ease-out;';
+                    emoji.style.left = (Math.random() * 85) + '%';
+                    emoji.style.top = (Math.random() * 85) + '%';
+                    emoji.style.zIndex = 10 + Math.floor(i / 20);
+                    emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    emojiContainer.appendChild(emoji);
+                    emojiElements.push(emoji);
                 }
                 
-                function hideBubble() {
-                    bubble.style.opacity = '0';
+                emojiElements.sort(() => Math.random() - 0.5);
+                
+                let removedCount = 0;
+                
+                function getRemovalCount() {
+                    const timeRatio = 1 - (timeLeft / 30);
+                    if (timeRatio < 0.3) return 1;
+                    if (timeRatio < 0.5) return Math.random() < 0.7 ? 1 : 2;
+                    if (timeRatio < 0.65) return 2 + Math.floor(Math.random() * 2);
+                    if (timeRatio < 0.8) return 5 + Math.floor(Math.random() * 3);
+                    return 12 + Math.floor(Math.random() * 8);
                 }
                 
-                function moveGuyRandom() {
-                    const newX = 50 + Math.random() * (rect.width - 150);
-                    const newY = 80 + Math.random() * (rect.height - 200);
-                    guy.style.left = newX + 'px';
-                    guy.style.top = newY + 'px';
-                    guy.style.transform = 'translate(0, 0)';
-                }
-                
-                let chaseCount = 0;
-                let tapCount = 0;
-                
-                // Handle taps on empty area (for stage 2)
-                gameArea.addEventListener('click', function(e) {
-                    if (e.target === gameArea && stage === 2) {
-                        tapCount++;
-                        if (tapCount >= 3) {
-                            // Reappear
-                            stage = 3;
-                            tapCount = 0;
-                            guy.style.opacity = '1';
-                            moveGuyRandom();
+                function removeEmojis(x, y) {
+                    const count = getRemovalCount();
+                    let removed = 0;
+                    
+                    for (let i = 0; i < emojiElements.length && removed < count; i++) {
+                        const emoji = emojiElements[i];
+                        if (emoji.style.opacity !== '0') {
+                            const rect = emoji.getBoundingClientRect();
+                            const containerRect = emojiContainer.getBoundingClientRect();
+                            const emojiX = rect.left - containerRect.left;
+                            const emojiY = rect.top - containerRect.top;
+                            
+                            const angle = Math.atan2(emojiY - y, emojiX - x);
+                            const distance = 200 + Math.random() * 100;
+                            const newX = Math.cos(angle) * distance;
+                            const newY = Math.sin(angle) * distance;
+                            
+                            emoji.style.transform = 'translate(' + newX + 'px, ' + newY + 'px) rotate(' + (Math.random() * 360) + 'deg)';
+                            emoji.style.opacity = '0';
+                            removed++;
+                            removedCount++;
                         }
                     }
-                });
-                
-                guy.addEventListener('click', function(e) {
-                    e.stopPropagation();
                     
-                    if (stage === 0) {
-                        // First tap - say hi
-                        showBubble('Hi', guy);
-                        stage = 1;
-                        setTimeout(function() {
-                            hideBubble();
-                            setTimeout(function() {
-                                guy.style.opacity = '0';
-                                stage = 2;
-                                showMessage('Where did he go? Tap around...');
-                            }, 500);
-                        }, 1500);
-                        
-                    } else if (stage === 3) {
-                        // Second appearance - thinking
-                        showBubble('I was thinking....', guy);
-                        stage = 4;
-                        setTimeout(function() {
-                            hideBubble();
-                            setTimeout(function() {
-                                guy.style.opacity = '0';
-                                setTimeout(function() {
-                                    guy.style.opacity = '1';
-                                    moveGuyRandom();
-                                    stage = 5;
-                                    showMessage('Catch him!');
-                                }, 800);
-                            }, 500);
-                        }, 2000);
-                        
-                    } else if (stage === 5) {
-                        // Chase stage
-                        chaseCount++;
-                        if (chaseCount < 5) {
-                            moveGuyRandom();
-                            guy.style.transition = 'all 0.3s ease';
-                            showMessage(chaseCount < 3 ? 'Almost!' : 'So close!');
-                        } else {
-                            // Move to center for proposal
-                            stage = 6;
-                            guy.style.left = '50%';
-                            guy.style.top = '40%';
-                            guy.style.transform = 'translate(-50%, -50%)';
-                            showMessage('');
-                        }
-                        
-                    } else if (stage === 6) {
-                        // Proposal
-                        showBubble('Be mine? 💕', guy);
-                        stage = 7;
-                        
-                        // Show ring
-                        setTimeout(function() {
-                            const ring = document.createElement('div');
-                            ring.className = 'sprite';
-                            ring.textContent = '💍';
-                            ring.style.left = '70%';
-                            ring.style.top = '50%';
-                            ring.style.fontSize = '3rem';
-                            ring.style.animation = 'heartbeat 1s ease infinite';
-                            gameArea.appendChild(ring);
+                    if (removedCount >= totalEmojis - 10) {
+                        rose.style.pointerEvents = 'auto';
+                        rose.style.cursor = 'pointer';
+                        rose.style.transform = 'scale(1.3)';
+                        rose.style.filter = 'drop-shadow(0 0 15px #ff69b4)';
+                    }
+                }
+                
+                let lastX = 0, lastY = 0;
+                let isSwiping = false;
+                
+                function handleStart(e) {
+                    e.preventDefault();
+                    const point = e.touches ? e.touches[0] : e;
+                    const containerRect = emojiContainer.getBoundingClientRect();
+                    lastX = point.clientX - containerRect.left;
+                    lastY = point.clientY - containerRect.top;
+                    isSwiping = true;
+                    
+                    if (!timerStarted) {
+                        timerStarted = true;
+                        timerDiv.style.opacity = '1';
+                        timerInterval = setInterval(function() {
+                            timeLeft--;
+                            timerDiv.textContent = '⏱️ ' + timeLeft + 's';
                             
-                            ring.addEventListener('click', function(ev) {
-                                ev.stopPropagation();
-                                hideBubble();
-                                guy.remove();
-                                ring.remove();
-                                
-                                // Show married couple
-                                const couple = document.createElement('div');
-                                couple.className = 'sprite';
-                                couple.textContent = '👫';
-                                couple.style.left = '50%';
-                                couple.style.top = '50%';
-                                couple.style.transform = 'translate(-50%, -50%)';
-                                couple.style.fontSize = '5rem';
-                                gameArea.appendChild(couple);
-                                
-                                createHearts(ev.clientX, ev.clientY);
-                                createParticles(ev.clientX, ev.clientY);
-                                
-                                setTimeout(function() {
-                                    collectSprite(dayIndex);
-                                }, 1500);
-                            });
+                            if (timeLeft <= 5 && removedCount < totalEmojis - 20) {
+                                removeEmojis(containerWidth / 2, containerHeight / 2);
+                            }
                             
-                            showMessage('Tap the ring! 💍');
+                            if (timeLeft <= 0) {
+                                clearInterval(timerInterval);
+                                emojiElements.forEach(function(el) {
+                                    el.style.opacity = '0';
+                                });
+                                rose.style.pointerEvents = 'auto';
+                                rose.style.cursor = 'pointer';
+                                rose.style.transform = 'scale(1.5)';
+                                rose.style.filter = 'drop-shadow(0 0 20px #ff69b4)';
+                            }
                         }, 1000);
                     }
-                });
+                }
                 
-                // No initial instruction - let user discover
-                showMessage('');
+                function handleMove(e) {
+                    if (!isSwiping) return;
+                    e.preventDefault();
+                    const point = e.touches ? e.touches[0] : e;
+                    const containerRect = emojiContainer.getBoundingClientRect();
+                    const x = point.clientX - containerRect.left;
+                    const y = point.clientY - containerRect.top;
+                    
+                    const dist = Math.sqrt((x - lastX) ** 2 + (y - lastY) ** 2);
+                    if (dist > 15) {
+                        removeEmojis(x, y);
+                        lastX = x;
+                        lastY = y;
+                    }
+                }
+                
+                function handleEnd() {
+                    isSwiping = false;
+                }
+                
+                emojiContainer.addEventListener('mousedown', handleStart);
+                emojiContainer.addEventListener('mousemove', handleMove);
+                emojiContainer.addEventListener('mouseup', handleEnd);
+                emojiContainer.addEventListener('mouseleave', handleEnd);
+                emojiContainer.addEventListener('touchstart', handleStart, { passive: false });
+                emojiContainer.addEventListener('touchmove', handleMove, { passive: false });
+                emojiContainer.addEventListener('touchend', handleEnd);
+                
+                rose.addEventListener('click', function(e) {
+                    if (rose.style.pointerEvents === 'auto') {
+                        clearInterval(timerInterval);
+                        createHearts(e.clientX, e.clientY);
+                        createParticles(e.clientX, e.clientY);
+                        rose.style.animation = 'heartbeat 0.5s ease';
+                        
+                        document.getElementById('instruction').textContent = 'Happy Rose Day babe! ❤️';
+                        document.getElementById('instruction').style.fontSize = '1.6rem';
+                        document.getElementById('message').textContent = '';
+                        
+                        setTimeout(function() {
+                            collectSprite(dayIndex);
+                        }, 2000);
+                    }
+                });
             }
+        }
 
-        // Challenge: Melt (Chocolate Day)
+        // Propose Day - Shy guy proposes
+        function startRunAway(dayIndex) {
+            const gameArea = document.getElementById('gameArea');
+            const day = days[dayIndex];
+            const rect = gameArea.getBoundingClientRect();
+            
+            gameArea.innerHTML = '<div class="instruction" id="instruction"></div><div class="message" id="message"></div>';
+            
+            let stage = 0;
+            
+            const guy = document.createElement('div');
+            guy.className = 'sprite';
+            guy.textContent = '🙇🏽‍♂️';
+            guy.style.left = '50%';
+            guy.style.top = '50%';
+            guy.style.transform = 'translate(-50%, -50%)';
+            gameArea.appendChild(guy);
+            
+            const bubble = document.createElement('div');
+            bubble.style.cssText = 'position:absolute;background:white;padding:10px 15px;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,0.2);font-size:1.1rem;color:#6b4c8a;opacity:0;transition:opacity 0.3s;z-index:100;white-space:nowrap;';
+            gameArea.appendChild(bubble);
+            
+            function showBubble(text, targetEl) {
+                bubble.textContent = text;
+                bubble.style.opacity = '1';
+                const guyRect = targetEl.getBoundingClientRect();
+                const areaRect = gameArea.getBoundingClientRect();
+                bubble.style.left = (guyRect.left - areaRect.left + 40) + 'px';
+                bubble.style.top = (guyRect.top - areaRect.top - 50) + 'px';
+            }
+            
+            function hideBubble() {
+                bubble.style.opacity = '0';
+            }
+            
+            function moveGuyRandom() {
+                const newX = 50 + Math.random() * (rect.width - 150);
+                const newY = 80 + Math.random() * (rect.height - 200);
+                guy.style.left = newX + 'px';
+                guy.style.top = newY + 'px';
+                guy.style.transform = 'translate(0, 0)';
+            }
+            
+            let chaseCount = 0;
+            let tapCount = 0;
+            
+            gameArea.addEventListener('click', function(e) {
+                if (e.target === gameArea && stage === 2) {
+                    tapCount++;
+                    if (tapCount >= 3) {
+                        stage = 3;
+                        tapCount = 0;
+                        guy.style.opacity = '1';
+                        moveGuyRandom();
+                    }
+                }
+            });
+            
+            guy.addEventListener('click', function(e) {
+                e.stopPropagation();
+                
+                if (stage === 0) {
+                    showBubble('Hi', guy);
+                    stage = 1;
+                    setTimeout(function() {
+                        hideBubble();
+                        setTimeout(function() {
+                            guy.style.opacity = '0';
+                            stage = 2;
+                        }, 500);
+                    }, 1500);
+                    
+                } else if (stage === 3) {
+                    showBubble('I was thinking....', guy);
+                    stage = 4;
+                    setTimeout(function() {
+                        hideBubble();
+                        setTimeout(function() {
+                            guy.style.opacity = '0';
+                            setTimeout(function() {
+                                guy.style.opacity = '1';
+                                moveGuyRandom();
+                                stage = 5;
+                            }, 800);
+                        }, 500);
+                    }, 2000);
+                    
+                } else if (stage === 5) {
+                    chaseCount++;
+                    if (chaseCount < 5) {
+                        moveGuyRandom();
+                        guy.style.transition = 'all 0.3s ease';
+                    } else {
+                        stage = 6;
+                        guy.style.left = '50%';
+                        guy.style.top = '40%';
+                        guy.style.transform = 'translate(-50%, -50%)';
+                    }
+                    
+                } else if (stage === 6) {
+                    showBubble('Be mine? 💕', guy);
+                    stage = 7;
+                    
+                    setTimeout(function() {
+                        const ring = document.createElement('div');
+                        ring.className = 'sprite';
+                        ring.textContent = '💍';
+                        ring.style.left = '70%';
+                        ring.style.top = '50%';
+                        ring.style.fontSize = '3rem';
+                        ring.style.animation = 'heartbeat 1s ease infinite';
+                        gameArea.appendChild(ring);
+                        
+                        ring.addEventListener('click', function(ev) {
+                            ev.stopPropagation();
+                            hideBubble();
+                            guy.remove();
+                            ring.remove();
+                            
+                            const couple = document.createElement('div');
+                            couple.className = 'sprite';
+                            couple.textContent = '👫';
+                            couple.style.left = '50%';
+                            couple.style.top = '50%';
+                            couple.style.transform = 'translate(-50%, -50%)';
+                            couple.style.fontSize = '5rem';
+                            gameArea.appendChild(couple);
+                            
+                            createHearts(ev.clientX, ev.clientY);
+                            createParticles(ev.clientX, ev.clientY);
+                            
+                            setTimeout(function() {
+                                collectSprite(dayIndex);
+                            }, 1500);
+                        });
+                    }, 1000);
+                }
+            });
+        }
+
+        // Chocolate Day - Catch the falling chocolate
         function startMelt(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
@@ -880,36 +775,32 @@
             sprite.style.left = '50%';
             sprite.style.top = '0px';
             sprite.style.transform = 'translateX(-50%)';
-            
             gameArea.appendChild(sprite);
             
             let position = 0;
-            const fallSpeed = 2;
             let caught = false;
-            
             showMessage(day.messages.melting);
             
-            const fall = setInterval(() => {
-                position += fallSpeed;
+            const fall = setInterval(function() {
+                position += 2;
                 sprite.style.top = position + 'px';
-                
                 if (position > rect.height - 100) {
                     clearInterval(fall);
                     if (!caught) {
                         sprite.remove();
                         showMessage(day.messages.miss);
-                        setTimeout(() => startMelt(dayIndex), 1500);
+                        setTimeout(function() { startMelt(dayIndex); }, 1500);
                     }
                 }
             }, 20);
             
-            sprite.addEventListener('click', (e) => {
+            sprite.addEventListener('click', function(e) {
                 if (!caught) {
                     caught = true;
                     clearInterval(fall);
                     createParticles(e.clientX, e.clientY);
                     sprite.style.animation = 'float 0.5s ease';
-                    setTimeout(() => {
+                    setTimeout(function() {
                         sprite.remove();
                         collectSprite(dayIndex);
                     }, 500);
@@ -917,7 +808,7 @@
             });
         }
 
-        // Challenge: Peekaboo (Teddy Day)
+        // Teddy Day - Peekaboo
         function startPeekaboo(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
@@ -929,27 +820,24 @@
             sprite.style.top = '50%';
             sprite.style.transform = 'translate(-50%, -50%)';
             sprite.style.opacity = '0';
-            
             gameArea.appendChild(sprite);
             
             showMessage(day.messages.hiding);
             
-            let peekCount = 0;
-            const peekInterval = setInterval(() => {
+            const peekInterval = setInterval(function() {
                 sprite.style.opacity = '1';
-                setTimeout(() => {
+                setTimeout(function() {
                     sprite.style.opacity = '0';
                 }, 1000);
-                peekCount++;
             }, 2000);
             
-            sprite.addEventListener('click', (e) => {
+            sprite.addEventListener('click', function(e) {
                 if (sprite.style.opacity === '1') {
                     clearInterval(peekInterval);
                     sprite.style.opacity = '1';
                     createHearts(e.clientX, e.clientY);
                     sprite.style.animation = 'bounce 0.5s ease';
-                    setTimeout(() => {
+                    setTimeout(function() {
                         sprite.remove();
                         collectSprite(dayIndex);
                     }, 500);
@@ -957,7 +845,7 @@
             });
         }
 
-        // Challenge: Three Taps (Promise Day)
+        // Promise Day - Three taps
         function startThreeTaps(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
@@ -968,18 +856,16 @@
             sprite.style.left = '50%';
             sprite.style.top = '50%';
             sprite.style.transform = 'translate(-50%, -50%)';
-            
             gameArea.appendChild(sprite);
             
             let tapCount = 0;
             const messages = [day.messages.first, day.messages.second, day.messages.third];
-            
             showMessage(messages[0]);
             
-            sprite.addEventListener('click', (e) => {
+            sprite.addEventListener('click', function(e) {
                 tapCount++;
                 sprite.style.transform = 'translate(-50%, -50%) scale(1.2)';
-                setTimeout(() => {
+                setTimeout(function() {
                     sprite.style.transform = 'translate(-50%, -50%) scale(1)';
                 }, 200);
                 
@@ -989,7 +875,7 @@
                 } else {
                     createHearts(e.clientX, e.clientY);
                     sprite.style.animation = 'heartbeat 0.5s ease';
-                    setTimeout(() => {
+                    setTimeout(function() {
                         sprite.remove();
                         collectSprite(dayIndex);
                     }, 500);
@@ -997,11 +883,10 @@
             });
         }
 
-        // Challenge: Simultaneous (Hug Day)
+        // Hug Day - Tap both hearts
         function startSimultaneous(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
-            const rect = gameArea.getBoundingClientRect();
             
             const heart1 = document.createElement('div');
             heart1.className = 'sprite';
@@ -1023,12 +908,11 @@
             let tapped = { heart1: false, heart2: false };
             let lastTapTime = 0;
             
-            const handleTap = (heartName, e) => {
-                const now = Date.now();
+            function handleTap(heartName, e) {
                 tapped[heartName] = true;
-                lastTapTime = now;
+                lastTapTime = Date.now();
                 
-                setTimeout(() => {
+                setTimeout(function() {
                     if (Date.now() - lastTapTime > 500) {
                         tapped = { heart1: false, heart2: false };
                     }
@@ -1039,7 +923,7 @@
                     heart1.style.animation = 'float 0.8s ease';
                     heart2.style.animation = 'float 0.8s ease';
                     
-                    setTimeout(() => {
+                    setTimeout(function() {
                         heart1.remove();
                         heart2.remove();
                         collectSprite(dayIndex);
@@ -1047,13 +931,13 @@
                 } else {
                     showMessage(day.messages.miss);
                 }
-            };
+            }
             
-            heart1.addEventListener('click', (e) => handleTap('heart1', e));
-            heart2.addEventListener('click', (e) => handleTap('heart2', e));
+            heart1.addEventListener('click', function(e) { handleTap('heart1', e); });
+            heart2.addEventListener('click', function(e) { handleTap('heart2', e); });
         }
 
-        // Challenge: Fleeting (Kiss Day)
+        // Kiss Day - Catch fleeting kiss
         function startFleeting(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
@@ -1061,87 +945,75 @@
             
             let attempts = 0;
             
-            const spawnKiss = () => {
+            function spawnKiss() {
                 const sprite = document.createElement('div');
                 sprite.className = 'sprite';
                 sprite.textContent = day.emoji;
                 sprite.style.left = Math.random() * (rect.width - 80) + 'px';
                 sprite.style.top = Math.random() * (rect.height - 80) + 'px';
                 sprite.style.opacity = '0';
-                
                 gameArea.appendChild(sprite);
                 
-                setTimeout(() => {
+                setTimeout(function() {
                     sprite.style.opacity = '1';
                     sprite.style.transition = 'opacity 0.3s';
                 }, 100);
                 
                 showMessage(day.messages.appearing);
                 
-                const disappear = setTimeout(() => {
+                const disappear = setTimeout(function() {
                     sprite.style.opacity = '0';
-                    setTimeout(() => {
+                    setTimeout(function() {
                         sprite.remove();
                         attempts++;
-                        if (attempts < 8) {
-                            showMessage(day.messages.miss);
-                            setTimeout(spawnKiss, 1000);
-                        } else {
-                            setTimeout(spawnKiss, 500);
-                        }
+                        showMessage(day.messages.miss);
+                        setTimeout(spawnKiss, 1000);
                     }, 300);
                 }, 1500);
                 
-                sprite.addEventListener('click', (e) => {
+                sprite.addEventListener('click', function(e) {
                     clearTimeout(disappear);
                     sprite.style.opacity = '1';
-                    createConfetti(e.clientX, e.clientY);
+                    createParticles(e.clientX, e.clientY);
                     sprite.style.animation = 'spin 0.5s ease';
-                    setTimeout(() => {
+                    setTimeout(function() {
                         sprite.remove();
                         collectSprite(dayIndex);
                     }, 500);
                 });
-            };
+            }
             
             spawnKiss();
         }
 
-        // Challenge: Finale (Valentine's Day)
+        // Valentine's Day - Collect all emojis
         function startFinale(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
             
             showMessage(day.messages.collecting);
             
-            const allEmojis = days.map(d => d.emoji);
+            const allEmojis = days.map(function(d) { return d.emoji; });
             let collected = 0;
             
-            allEmojis.forEach((emoji, index) => {
-                setTimeout(() => {
+            allEmojis.forEach(function(emoji, index) {
+                setTimeout(function() {
                     const sprite = document.createElement('div');
                     sprite.className = 'sprite';
                     sprite.textContent = emoji;
-                    
                     const angle = (Math.PI * 2 * index) / allEmojis.length;
-                    const radius = 100;
-                    const x = 50 + Math.cos(angle) * 30;
-                    const y = 50 + Math.sin(angle) * 30;
-                    
-                    sprite.style.left = x + '%';
-                    sprite.style.top = y + '%';
+                    sprite.style.left = (50 + Math.cos(angle) * 30) + '%';
+                    sprite.style.top = (50 + Math.sin(angle) * 30) + '%';
                     sprite.style.animation = 'float 2s ease-in-out infinite';
                     sprite.style.animationDelay = (index * 0.1) + 's';
-                    
                     gameArea.appendChild(sprite);
                     
-                    sprite.addEventListener('click', (e) => {
+                    sprite.addEventListener('click', function(e) {
                         collected++;
                         createParticles(e.clientX, e.clientY);
                         sprite.remove();
-                        
                         if (collected === allEmojis.length) {
-                            setTimeout(() => {
+                            setTimeout(function() {
                                 collectSprite(dayIndex);
                             }, 500);
                         }
@@ -1150,17 +1022,10 @@
             });
         }
 
-        function createConfetti(x, y) {
-            createParticles(x, y, 'confetti');
-        }
-
         function startChallenge(dayIndex) {
             const day = days[dayIndex];
             const gameArea = document.getElementById('gameArea');
-            gameArea.innerHTML = `
-                <div class="instruction" id="instruction">${day.instruction}</div>
-                <div class="message" id="message"></div>
-            `;
+            gameArea.innerHTML = '<div class="instruction" id="instruction">' + day.instruction + '</div><div class="message" id="message"></div>';
             
             switch (day.challenge) {
                 case 'colorChange': startColorChange(dayIndex); break;
@@ -1175,18 +1040,17 @@
         }
 
         function updateDayButtons() {
-            const dayButtonsContainer = document.getElementById('dayButtons');
-            dayButtonsContainer.innerHTML = '';
-            
-            days.forEach((day, index) => {
+            const container = document.getElementById('dayButtons');
+            container.innerHTML = '';
+            days.forEach(function(day, index) {
                 const button = document.createElement('button');
                 button.className = 'day-button';
                 if (gameState.collected.includes(index)) {
                     button.classList.add('collected');
                 }
-                button.textContent = `${day.emoji} ${day.name}`;
-                button.onclick = () => startChallenge(index);
-                dayButtonsContainer.appendChild(button);
+                button.textContent = day.emoji + ' ' + day.name;
+                button.onclick = function() { startChallenge(index); };
+                container.appendChild(button);
             });
         }
 
@@ -1195,28 +1059,15 @@
                 gameState.collected = [];
                 saveProgress();
                 updateDayButtons();
-                const gameArea = document.getElementById('gameArea');
-                gameArea.innerHTML = `
-                    <div class="instruction">Progress reset! Select a day above to test.</div>
-                `;
+                document.getElementById('gameArea').innerHTML = '<div class="instruction">Progress reset! Select a day above to test.</div>';
             }
         }
 
         function init() {
-            const dateDisplay = document.getElementById('dateDisplay');
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            dateDisplay.textContent = dateStr;
-            
+            document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             updateDayButtons();
         }
 
-        // Initialize on load
         init();
     </script>
 </body>
