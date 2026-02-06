@@ -417,14 +417,25 @@
             }, 3000);
         }
 
+
+        function finalizeChallenge(dayIndex, html) {
+                if (!gameState.collected.includes(dayIndex)) {
+                    gameState.collected.push(dayIndex);
+                    saveProgress();
+                    updateDayButtons();
+                }
+                const gameArea = document.getElementById('gameArea');
+                gameArea.innerHTML = html; // ✅ persists
+            }
+
+        
         // Rose Day - Swipe to find the rose
- function startColorChange(dayIndex) {
+function startColorChange(dayIndex) {
     const gameArea = document.getElementById('gameArea');
     const day = days[dayIndex];
 
-    // Ensure a clean slate (important if switching days quickly)
+    // Clean slate (prevents duplicate listeners on re-entry)
     gameArea.replaceWith(gameArea.cloneNode(false));
-    // Re-acquire after replace
     const freshArea = document.getElementById('gameArea');
 
     let introStage = 0;
@@ -450,7 +461,6 @@
     freshArea.addEventListener('click', handleIntroTap);
 
     function startEmojiGame() {
-        // You can tweak emoji pool if desired
         const emojis = [
             '☀️','🧸','🐕','🌈','⭐','🌻','🍀','🌸','🐱','🦁','🐺','🦊','🐻','🐼','🐨','🐯',
             '🦅','🦉','🐢','🐬','🐋','🌍','🗺️','⛰️','🌋','🏔️','🌲','🌳','🌴','🌵','🍁','🍂',
@@ -469,23 +479,25 @@
         freshArea.innerHTML = '';
         freshArea.style.position = 'relative';
         freshArea.style.overflow = 'hidden';
-        // Important for swipe game
         freshArea.style.touchAction = 'none';
 
         const header = document.createElement('div');
         header.style.cssText = 'position:relative;z-index:1001;padding:10px;text-align:center;';
-        header.innerHTML = '<div class="instruction" id="instruction">But where\\\'s your rose?</div><div class="message" id="message"></div>';
+        header.innerHTML =
+            '<div class="instruction" id="instruction">But where\\\'s your rose?</div>' +
+            '<div class="message" id="message"></div>';
         freshArea.appendChild(header);
 
         const emojiContainer = document.createElement('div');
         emojiContainer.id = 'emojiContainer';
-        emojiContainer.style.cssText = 'position:absolute;top:80px;left:0;right:0;bottom:0;overflow:hidden;';
+        emojiContainer.style.cssText =
+            'position:absolute;top:80px;left:0;right:0;bottom:0;overflow:hidden;';
         freshArea.appendChild(emojiContainer);
 
         const containerHeight = freshArea.offsetHeight - 80;
         const containerWidth = freshArea.offsetWidth;
 
-        // ROSE (make sure it's above everything & receives taps)
+        // Rose above everything & tappable
         const rose = document.createElement('div');
         rose.style.cssText =
             'position:absolute;font-size:4rem;z-index:9999;cursor:pointer;' +
@@ -495,7 +507,7 @@
         rose.textContent = '🌹';
         emojiContainer.appendChild(rose);
 
-        // Scatter emojis (pointer-events none so swipes work and rose can be tapped)
+        // Scatter emojis (swipe removes)
         for (let i = 0; i < totalEmojis; i++) {
             const emoji = document.createElement('div');
             const size = 1.5 + Math.random() * 1.5;
@@ -510,7 +522,6 @@
             emojiElements.push(emoji);
         }
 
-        // Randomize removal order
         emojiElements.sort(() => Math.random() - 0.5);
 
         function getRemovalCount() {
@@ -523,7 +534,6 @@
         }
 
         function checkAllEmojisGone() {
-            // All scattered emojis invisible?
             for (let i = 0; i < emojiElements.length; i++) {
                 if (emojiElements[i].style.opacity !== '0') return false;
             }
@@ -565,7 +575,7 @@
         let isSwiping = false;
 
         function handleStart(e) {
-            // ✅ If user starts on the rose, don't hijack it as swipe
+            // If user starts on rose, don't hijack tap as swipe
             if (e.target === rose) return;
 
             e.preventDefault();
@@ -585,10 +595,8 @@
                     }
 
                     if (timeLeft <= 0) {
-                        clearInterval(timerInterval);
-                        emojiElements.forEach(function (el) {
-                            el.style.opacity = '0';
-                        });
+                        clearীৱInterval(timerInterval);
+                        emojiElements.forEach(function (el) { el.style.opacity = '0'; });
                         rose.style.transform = 'scale(1.5)';
                         rose.style.filter = 'drop-shadow(0 0 20px #ff69b4)';
                     }
@@ -612,11 +620,8 @@
             }
         }
 
-        function handleEnd() {
-            isSwiping = false;
-        }
+        function handleEnd() { isSwiping = false; }
 
-        // Mouse + touch
         emojiContainer.addEventListener('mousedown', handleStart);
         emojiContainer.addEventListener('mousemove', handleMove);
         emojiContainer.addEventListener('mouseup', handleEnd);
@@ -625,7 +630,32 @@
         emojiContainer.addEventListener('touchmove', handleMove, { passive: false });
         emojiContainer.addEventListener('touchend', handleEnd);
 
-        // ✅ Robust rose tap handler (mobile-friendly)
+        function endRoseDay(x, y) {
+            if (timerInterval) clearInterval(timerInterval);
+
+            // ✅ Prevent overlap: remove emoji layer (including rose) BEFORE showing final text
+            emojiContainer.remove();
+
+            createHearts(x, y);
+            createParticles(x, y);
+
+            // ✅ Show final message ONCE (top), no duplicate elsewhere
+            const inst = document.getElementById('instruction');
+            inst.textContent = 'Happy Rose Day babe! ❤️';
+            inst.style.fontSize = '1.6rem';
+
+            const msg = document.getElementById('message');
+            if (msg) msg.textContent = '';
+
+            // ✅ Persistent end screen (after short celebratory pause)
+            setTimeout(function () {
+                finalizeChallenge(dayIndex,
+                    '<div class="instruction" style="font-size:1.6rem;">Happy Rose Day babe! ❤️</div>' +
+                    '<div class="message">Challenge cleared 🌹</div>'
+                );
+            }, 1200);
+        }
+
         function tryCollectRose(ev) {
             ev.preventDefault?.();
             ev.stopPropagation();
@@ -634,42 +664,23 @@
             if (!checkAllEmojisGone()) return;
 
             roseMessageShown = true;
-            if (timerInterval) clearInterval(timerInterval);
 
             const pt = ev.touches ? ev.touches[0] : (ev.changedTouches ? ev.changedTouches[0] : ev);
-            const x = pt.clientX;
-            const y = pt.clientY;
-
-            createHearts(x, y);
-            createParticles(x, y);
-            rose.style.animation = 'heartbeat 0.5s ease';
-
-            const inst = document.getElementById('instruction');
-            inst.textContent = 'Happy Rose Day babe! ❤️';
-            inst.style.fontSize = '1.6rem';
-
-            const msg = document.getElementById('message');
-            if (msg) msg.textContent = '';
-
-            setTimeout(function () {
-                collectSprite(dayIndex);
-            }, 2000);
+            endRoseDay(pt.clientX, pt.clientY);
         }
 
-        // pointerup is the key fix; touchend is extra safety
         rose.addEventListener('pointerup', tryCollectRose, { passive: false });
         rose.addEventListener('touchend', tryCollectRose, { passive: false });
     }
 }
-
         // Propose Day - Shy guy proposes
 
-        function startRunAway(dayIndex) {
+
+function startRunAway(dayIndex) {
     const gameArea = document.getElementById('gameArea');
     const day = days[dayIndex];
-    const rect = gameArea.getBoundingClientRect();
 
-    // Clean slate (avoid duplicate listeners if user re-enters)
+    // Clean slate (prevents duplicate listeners on re-entry)
     gameArea.replaceWith(gameArea.cloneNode(false));
     const freshArea = document.getElementById('gameArea');
 
@@ -688,46 +699,54 @@
     const bubble = document.createElement('div');
     bubble.style.cssText =
         'position:absolute;background:white;padding:10px 15px;border-radius:15px;' +
-        'box-shadow:0 2px 10px rgba(0,0,0,0.2);font-size:1.1rem;color:#6b4c8a;' +
-        'opacity:0;transition:opacity 0.3s;z-index:100;max-width:80%;text-align:center;';
+        'box-shadow:0 2px 10px rgba(0,0,0,0.2);font-size:1.05rem;color:#6b4c8a;' +
+        'opacity:0;transition:opacity 0.15s;z-index:100;max-width:70%;text-align:center;' +
+        'pointer-events:none;';
     freshArea.appendChild(bubble);
+
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
     function showBubble(text, targetEl) {
         bubble.innerHTML = text;
         bubble.style.opacity = '1';
 
+        // Place bubble close to emoji (above it), centered
         const guyRect = targetEl.getBoundingClientRect();
         const areaRect = freshArea.getBoundingClientRect();
-        const bubbleWidth = 170;
-        const bubbleHeight = 60;
 
-        let left = guyRect.left - areaRect.left + 40;
-        let top = guyRect.top - areaRect.top - 50;
+        // Temporarily measure bubble size
+        bubble.style.left = '0px';
+        bubble.style.top = '0px';
+        bubble.style.transform = 'translateX(-50%)';
 
-        if (left + bubbleWidth > areaRect.width - 10) {
-            left = guyRect.left - areaRect.left - bubbleWidth - 10;
+        const bubbleRect = bubble.getBoundingClientRect();
+
+        let centerX = (guyRect.left - areaRect.left) + (guyRect.width / 2);
+        let topY = (guyRect.top - areaRect.top) - bubbleRect.height - 10;
+
+        // If not enough space above, put it below
+        if (topY < 10) {
+            topY = (guyRect.bottom - areaRect.top) + 10;
         }
-        if (left < 10) left = 10;
 
-        if (top < 10) {
-            top = guyRect.bottom - areaRect.top + 10;
-        }
+        // Clamp horizontally so it stays inside the area
+        centerX = clamp(centerX, bubbleRect.width / 2 + 10, areaRect.width - bubbleRect.width / 2 - 10);
 
-        bubble.style.left = left + 'px';
-        bubble.style.top = top + 'px';
+        bubble.style.left = centerX + 'px';
+        bubble.style.top = topY + 'px';
     }
 
-    function hideBubble() {
-        bubble.style.opacity = '0';
-    }
+    function hideBubble() { bubble.style.opacity = '0'; }
 
     function moveGuyRandom() {
         const areaRect = freshArea.getBoundingClientRect();
         const newX = 50 + Math.random() * (areaRect.width - 150);
-        const newY = 80 + Math.random() * (areaRect.height - 200);
+        const newY = 90 + Math.random() * (areaRect.height - 210);
         guy.style.left = newX + 'px';
         guy.style.top = newY + 'px';
         guy.style.transform = 'translate(0, 0)';
+        // keep bubble near him if visible
+        if (bubble.style.opacity === '1') showBubble(bubble.innerHTML, guy);
     }
 
     let chaseCount = 0;
@@ -746,6 +765,36 @@
         }
     });
 
+    function endProposeDay(x, y) {
+        createHearts(x, y);
+        createParticles(x, y);
+
+        // ✅ Show "Together forever" ONCE + add Happy Propose Day babe message
+        const inst = document.getElementById('instruction');
+        inst.innerHTML =
+            '<div style="text-align:center; line-height:1.25;">' +
+                '<div style="font-size:1.6rem; font-weight:bold;">Together forever! 💍</div>' +
+                '<div style="font-size:1.25rem; margin-top:6px;">Happy Propose Day babe! ❤️</div>' +
+                '<div style="font-size:1.25rem; margin-top:6px;">☀️☀️🌻🌻</div>' +
+            '</div>';
+        inst.style.fontSize = '1.4rem';
+
+        const msg = document.getElementById('message');
+        if (msg) msg.textContent = '';
+
+        // ✅ Persistent end screen (no collectSprite)
+        setTimeout(function () {
+            finalizeChallenge(dayIndex,
+                '<div class="instruction" style="font-size:1.5rem; line-height:1.3;">' +
+                    '<div style="font-weight:bold;">Together forever! 💍</div>' +
+                    '<div style="margin-top:6px;">Happy Propose Day babe! ❤️</div>' +
+                    '<div style="margin-top:6px;">☀️☀️🌻🌻</div>' +
+                '</div>' +
+                '<div class="message">Challenge cleared 💜</div>'
+            );
+        }, 1400);
+    }
+
     guy.addEventListener('click', function (e) {
         e.stopPropagation();
 
@@ -758,7 +807,7 @@
                     guy.style.opacity = '0';
                     stage = 2;
                 }, 500);
-            }, 1500);
+            }, 1200);
 
         } else if (stage === 3) {
             showBubble('I was thinking....', guy);
@@ -771,15 +820,15 @@
                         guy.style.opacity = '1';
                         moveGuyRandom();
                         stage = 5;
-                    }, 800);
-                }, 500);
-            }, 2000);
+                    }, 700);
+                }, 400);
+            }, 1600);
 
         } else if (stage === 5) {
             chaseCount++;
             if (chaseCount < 5) {
                 moveGuyRandom();
-                guy.style.transition = 'all 0.3s ease';
+                guy.style.transition = 'all 0.25s ease';
             } else {
                 stage = 6;
                 guy.style.left = '50%';
@@ -816,24 +865,9 @@
                     couple.style.fontSize = '5rem';
                     freshArea.appendChild(couple);
 
-                    createHearts(ev.clientX, ev.clientY);
-                    createParticles(ev.clientX, ev.clientY);
-
-                    // ✅ Centered, single "Together forever" + suns/sunflowers
-                    const instructionEl = document.getElementById('instruction');
-                    instructionEl.innerHTML = `
-                      <div style="text-align:center; line-height:1.25;">
-                        <div style="font-size:1.6rem; font-weight:bold;">Together forever! 💍</div>
-                        <div style="font-size:1.3rem; margin-top:6px;">☀️☀️🌻🌻</div>
-                      </div>
-                    `;
-                    instructionEl.style.fontSize = '1.4rem';
-
-                    setTimeout(function () {
-                        collectSprite(dayIndex);
-                    }, 2500);
+                    endProposeDay(ev.clientX, ev.clientY);
                 });
-            }, 1000);
+            }, 900);
         }
     });
 }
