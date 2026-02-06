@@ -484,7 +484,7 @@ function startColorChange(dayIndex) {
         const header = document.createElement('div');
         header.style.cssText = 'position:relative;z-index:1001;padding:10px;text-align:center;';
         header.innerHTML =
-            '<div class="instruction" id="instruction">But where\\\'s your rose?</div>' +
+            '<div class="instruction" id="instruction">But where\'s your rose?</div>' +
             '<div class="message" id="message"></div>';
         freshArea.appendChild(header);
 
@@ -595,7 +595,7 @@ function startColorChange(dayIndex) {
                     }
 
                     if (timeLeft <= 0) {
-                        clearীৱInterval(timerInterval);
+                        clearInterval(timerInterval);
                         emojiElements.forEach(function (el) { el.style.opacity = '0'; });
                         rose.style.transform = 'scale(1.5)';
                         rose.style.filter = 'drop-shadow(0 0 20px #ff69b4)';
