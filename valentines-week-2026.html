@@ -259,6 +259,13 @@
                 instruction: "",
                 challenge: "chocolateSwipe",
                 messages: {
+                instruction: "Swipe away all 3 wrappers to reveal your chocolate!",
+                challenge: "chocolateSwipe",
+                messages: {
+                    melting: "Scratch off the purple glaze first!",
+                    secondLayer: "Yum! Now clear the white paper layer!",
+                    finalLayer: "Almost there! Swipe away the gold foil!",
+                    tapChocolate: "Tap the chocolate bar 🍫",
                     success: "Happy Chocolate Day babe! ❤️"
                 }
             },
@@ -871,6 +878,7 @@
             chocolate.style.display = 'none';
             stage.appendChild(chocolate);
 
+            const layerPrompts = [day.messages.melting, day.messages.secondLayer, day.messages.finalLayer];
             const layers = [
                 {
                     base: '#6a1b9a',
@@ -880,6 +888,10 @@
                         sheen.addColorStop(0.35, 'rgba(255, 255, 255, 0.06)');
                         sheen.addColorStop(0.62, 'rgba(255, 255, 255, 0.28)');
                         sheen.addColorStop(1, 'rgba(255, 255, 255, 0.08)');
+                        sheen.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
+                        sheen.addColorStop(0.4, 'rgba(255, 255, 255, 0.04)');
+                        sheen.addColorStop(0.6, 'rgba(255, 255, 255, 0.22)');
+                        sheen.addColorStop(1, 'rgba(255, 255, 255, 0.05)');
                         ctx.fillStyle = sheen;
                         ctx.fillRect(0, 0, w, h);
                     }
@@ -890,6 +902,9 @@
                         ctx.strokeStyle = 'rgba(90, 90, 90, 0.16)';
                         ctx.lineWidth = 1.4;
                         for (let x = -h; x < w + h; x += 15) {
+                        ctx.strokeStyle = 'rgba(80, 80, 80, 0.12)';
+                        ctx.lineWidth = 1;
+                        for (let x = -h; x < w + h; x += 18) {
                             ctx.beginPath();
                             ctx.moveTo(x, 0);
                             ctx.lineTo(x + h, h);
@@ -912,6 +927,16 @@
                         ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
                         ctx.lineWidth = 1.2;
                         for (let y = 0; y < h; y += 16) {
+                        foil.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+                        foil.addColorStop(0.2, 'rgba(255, 255, 255, 0.35)');
+                        foil.addColorStop(0.5, 'rgba(120, 84, 14, 0.22)');
+                        foil.addColorStop(0.8, 'rgba(255, 255, 255, 0.28)');
+                        foil.addColorStop(1, 'rgba(98, 68, 12, 0.2)');
+                        ctx.fillStyle = foil;
+                        ctx.fillRect(0, 0, w, h);
+
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                        for (let y = 0; y < h; y += 20) {
                             ctx.beginPath();
                             ctx.moveTo(0, y + Math.random() * 6);
                             ctx.lineTo(w, y + Math.random() * 6);
@@ -923,16 +948,19 @@
 
             let currentLayerIndex = 0;
             let activeLayer = createChocolateLayer(stage, layers[currentLayerIndex]);
+            showMessage(day.messages.melting);
 
             function advanceLayer() {
                 activeLayer.canvas.remove();
                 currentLayerIndex += 1;
 
                 if (currentLayerIndex < layers.length) {
+                    showMessage(layerPrompts[currentLayerIndex]);
                     activeLayer = createChocolateLayer(stage, layers[currentLayerIndex]);
                     return;
                 }
 
+                showMessage(day.messages.tapChocolate);
                 chocolate.style.display = 'block';
                 chocolate.addEventListener('click', function(event) {
                     createParticles(event.clientX, event.clientY);
@@ -989,6 +1017,12 @@
                     sampleCounter += 1;
 
                     if (!layerState.completed && sampleCounter % 6 === 0 && layerState.getClearedRatio() > 0.86) {
+                    layerState.ctx.globalCompositeOperation = 'destination-out';
+                    layerState.ctx.beginPath();
+                    layerState.ctx.arc(x, y, 30, 0, Math.PI * 2);
+                    layerState.ctx.fill();
+
+                    if (!layerState.completed && layerState.getClearedRatio() > 0.96) {
                         layerState.completed = true;
                         advanceLayer();
                     }
@@ -1025,6 +1059,9 @@
                 layerState.canvas.addEventListener('pointerleave', function() {
                     layerState.lastPoint = null;
                 });
+                window.addEventListener('pointerup', function() {
+                    layerState.isDrawing = false;
+                }, { once: false });
             }
 
             function createChocolateLayer(parent, styleConfig) {
@@ -1068,6 +1105,16 @@
                             }
                         }
                         return transparentPixels / (sampleCanvas.width * sampleCanvas.height);
+                    getClearedRatio: function() {
+                        const sampleCtx = canvas.getContext('2d', { willReadFrequently: true });
+                        const image = sampleCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+                        let transparentPixels = 0;
+                        for (let i = 3; i < image.length; i += 4) {
+                            if (image[i] < 16) {
+                                transparentPixels += 1;
+                            }
+                        }
+                        return transparentPixels / (canvas.width * canvas.height);
                     }
                 };
 
