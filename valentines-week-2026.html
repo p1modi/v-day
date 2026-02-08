@@ -145,11 +145,6 @@
         <h1>Valentine's Week 2026</h1>
         <div class="date-display" id="dateDisplay"></div>
 
-        <div class="day-info" id="dayInfo">
-            <div class="day-emoji" id="dayEmoji"></div>
-            <h2 id="dayName"></h2>
-        </div>
-
         <div class="game-area" id="gameArea">
             <div class="instruction">Loading...</div>
         </div>
@@ -1097,8 +1092,6 @@
             }
 
             const day=days[todayIndex];
-            document.getElementById('dayEmoji').textContent=day.emoji;
-            document.getElementById('dayName').textContent=day.name;
 
             if(gameState.collected.includes(todayIndex)){
                 showAlreadyCompleted(todayIndex);
