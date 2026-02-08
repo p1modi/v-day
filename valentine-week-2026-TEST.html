@@ -188,6 +188,34 @@
             z-index: 1000;
         }
 
+        .chocolate-stage {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .chocolate-layer {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .chocolate-target {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            cursor: pointer;
+            user-select: none;
+            filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.3));
+            animation: float 2s ease-in-out infinite;
+        }
+
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
@@ -258,12 +286,10 @@
                 date: new Date('2026-02-09'),
                 name: "Chocolate Day",
                 emoji: "🍫",
-                instruction: "Don't let the chocolate melt!",
-                challenge: "melt",
+                instruction: "",
+                challenge: "chocolateSwipe",
                 messages: {
-                    melting: "Don't let me melt away!",
-                    miss: "Sweet but slippery!",
-                    success: "Caught before I melted your heart! 🍫"
+                    success: "Happy Chocolate Day babe! ❤️"
                 }
             },
             {
@@ -873,50 +899,235 @@ function startRunAway(dayIndex) {
 }
 
         
-        // Chocolate Day - Catch the falling chocolate
-        function startMelt(dayIndex) {
+        // Chocolate Day - Layered chocolate swipe reveal
+        function startChocolateSwipe(dayIndex) {
             const gameArea = document.getElementById('gameArea');
             const day = days[dayIndex];
-            const rect = gameArea.getBoundingClientRect();
-            
-            const sprite = document.createElement('div');
-            sprite.className = 'sprite';
-            sprite.textContent = day.emoji;
-            sprite.style.left = '50%';
-            sprite.style.top = '0px';
-            sprite.style.transform = 'translateX(-50%)';
-            gameArea.appendChild(sprite);
-            
-            let position = 0;
-            let caught = false;
-            showMessage(day.messages.melting);
-            
-            const fall = setInterval(function() {
-                position += 2;
-                sprite.style.top = position + 'px';
-                if (position > rect.height - 100) {
-                    clearInterval(fall);
-                    if (!caught) {
-                        sprite.remove();
-                        showMessage(day.messages.miss);
-                        setTimeout(function() { startMelt(dayIndex); }, 1500);
+            const instructionEl = document.getElementById('instruction');
+            const messageEl = document.getElementById('message');
+
+            if (instructionEl) {
+                instructionEl.textContent = '';
+            }
+            if (messageEl) {
+                messageEl.textContent = '';
+            }
+
+            const stage = document.createElement('div');
+            stage.className = 'chocolate-stage';
+            gameArea.appendChild(stage);
+
+            const chocolate = document.createElement('div');
+            chocolate.className = 'chocolate-target';
+            chocolate.textContent = day.emoji;
+            chocolate.style.display = 'none';
+            stage.appendChild(chocolate);
+
+            const layers = [
+                {
+                    base: '#6a1b9a',
+                    texture: function(ctx, w, h) {
+                        const sheen = ctx.createLinearGradient(0, 0, w, h);
+                        sheen.addColorStop(0, 'rgba(255, 255, 255, 0.34)');
+                        sheen.addColorStop(0.35, 'rgba(255, 255, 255, 0.06)');
+                        sheen.addColorStop(0.62, 'rgba(255, 255, 255, 0.28)');
+                        sheen.addColorStop(1, 'rgba(255, 255, 255, 0.08)');
+                        ctx.fillStyle = sheen;
+                        ctx.fillRect(0, 0, w, h);
+                    }
+                },
+                {
+                    base: '#f9f9f6',
+                    texture: function(ctx, w, h) {
+                        ctx.strokeStyle = 'rgba(90, 90, 90, 0.16)';
+                        ctx.lineWidth = 1.4;
+                        for (let x = -h; x < w + h; x += 15) {
+                            ctx.beginPath();
+                            ctx.moveTo(x, 0);
+                            ctx.lineTo(x + h, h);
+                            ctx.stroke();
+                        }
+                    }
+                },
+                {
+                    base: '#c9a53a',
+                    texture: function(ctx, w, h) {
+                        const foil = ctx.createLinearGradient(0, 0, w, 0);
+                        foil.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+                        foil.addColorStop(0.2, 'rgba(255, 255, 255, 0.38)');
+                        foil.addColorStop(0.5, 'rgba(120, 84, 14, 0.2)');
+                        foil.addColorStop(0.8, 'rgba(255, 255, 255, 0.3)');
+                        foil.addColorStop(1, 'rgba(98, 68, 12, 0.22)');
+                        ctx.fillStyle = foil;
+                        ctx.fillRect(0, 0, w, h);
+
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+                        ctx.lineWidth = 1.2;
+                        for (let y = 0; y < h; y += 16) {
+                            ctx.beginPath();
+                            ctx.moveTo(0, y + Math.random() * 6);
+                            ctx.lineTo(w, y + Math.random() * 6);
+                            ctx.stroke();
+                        }
                     }
                 }
-            }, 20);
-            
-            sprite.addEventListener('click', function(e) {
-                if (!caught) {
-                    caught = true;
-                    clearInterval(fall);
-                    createParticles(e.clientX, e.clientY);
-                    sprite.style.animation = 'float 0.5s ease';
-                    setTimeout(function() {
-                        sprite.remove();
-                        collectSprite(dayIndex);
-                    }, 500);
+            ];
+
+            let currentLayerIndex = 0;
+            let activeLayer = createChocolateLayer(stage, layers[currentLayerIndex]);
+
+            function advanceLayer() {
+                activeLayer.canvas.remove();
+                currentLayerIndex += 1;
+
+                if (currentLayerIndex < layers.length) {
+                    activeLayer = createChocolateLayer(stage, layers[currentLayerIndex]);
+                    return;
                 }
-            });
+
+                chocolate.style.display = 'block';
+                chocolate.addEventListener('click', function(event) {
+                    createParticles(event.clientX, event.clientY);
+                    collectSprite(dayIndex);
+                }, { once: true });
+            }
+
+            function bindScratchEvents(layerState) {
+                const brushSize = Math.max(90, Math.floor(layerState.width * 0.16));
+                let sampleCounter = 0;
+
+                function eraseSegment(fromX, fromY, toX, toY) {
+                    const dx = toX - fromX;
+                    const dy = toY - fromY;
+                    const distance = Math.hypot(dx, dy);
+                    const step = Math.max(8, brushSize * 0.16);
+                    const steps = Math.max(1, Math.ceil(distance / step));
+
+                    layerState.ctx.globalCompositeOperation = 'destination-out';
+                    layerState.ctx.lineCap = 'round';
+                    layerState.ctx.lineJoin = 'round';
+                    layerState.ctx.strokeStyle = 'rgba(0,0,0,1)';
+                    layerState.ctx.lineWidth = brushSize;
+
+                    layerState.ctx.beginPath();
+                    layerState.ctx.moveTo(fromX, fromY);
+                    layerState.ctx.lineTo(toX, toY);
+                    layerState.ctx.stroke();
+
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const x = fromX + dx * t;
+                        const y = fromY + dy * t;
+                        layerState.ctx.beginPath();
+                        layerState.ctx.arc(x, y, brushSize * 0.5, 0, Math.PI * 2);
+                        layerState.ctx.fill();
+                    }
+                }
+
+                function drawAt(clientX, clientY) {
+                    const rect = layerState.canvas.getBoundingClientRect();
+                    const scaleX = layerState.canvas.width / rect.width;
+                    const scaleY = layerState.canvas.height / rect.height;
+                    const x = (clientX - rect.left) * scaleX;
+                    const y = (clientY - rect.top) * scaleY;
+
+                    if (layerState.lastPoint) {
+                        eraseSegment(layerState.lastPoint.x, layerState.lastPoint.y, x, y);
+                    } else {
+                        eraseSegment(x, y, x, y);
+                    }
+
+                    layerState.lastPoint = { x: x, y: y };
+                    sampleCounter += 1;
+
+                    if (!layerState.completed && sampleCounter % 6 === 0 && layerState.getClearedRatio() > 0.86) {
+                        layerState.completed = true;
+                        advanceLayer();
+                    }
+                }
+
+                layerState.canvas.addEventListener('pointerdown', function(event) {
+                    layerState.isDrawing = true;
+                    layerState.lastPoint = null;
+                    layerState.canvas.setPointerCapture(event.pointerId);
+                    drawAt(event.clientX, event.clientY);
+                });
+
+                layerState.canvas.addEventListener('pointermove', function(event) {
+                    if (!layerState.isDrawing) {
+                        return;
+                    }
+                    drawAt(event.clientX, event.clientY);
+                });
+
+                function stopDrawing(event) {
+                    layerState.isDrawing = false;
+                    layerState.lastPoint = null;
+                    if (event && typeof event.pointerId === 'number' && layerState.canvas.hasPointerCapture(event.pointerId)) {
+                        layerState.canvas.releasePointerCapture(event.pointerId);
+                    }
+                    if (!layerState.completed && layerState.getClearedRatio() > 0.86) {
+                        layerState.completed = true;
+                        advanceLayer();
+                    }
+                }
+
+                layerState.canvas.addEventListener('pointerup', stopDrawing);
+                layerState.canvas.addEventListener('pointercancel', stopDrawing);
+                layerState.canvas.addEventListener('pointerleave', function() {
+                    layerState.lastPoint = null;
+                });
+            }
+
+            function createChocolateLayer(parent, styleConfig) {
+                const rect = parent.getBoundingClientRect();
+                const pixelRatio = window.devicePixelRatio || 1;
+                const canvas = document.createElement('canvas');
+                canvas.className = 'chocolate-layer';
+                canvas.width = Math.floor(rect.width * pixelRatio);
+                canvas.height = Math.floor(rect.height * pixelRatio);
+                canvas.style.width = rect.width + 'px';
+                canvas.style.height = rect.height + 'px';
+                const ctx = canvas.getContext('2d');
+
+                ctx.scale(pixelRatio, pixelRatio);
+                ctx.fillStyle = styleConfig.base;
+                ctx.fillRect(0, 0, rect.width, rect.height);
+                styleConfig.texture(ctx, rect.width, rect.height);
+
+                parent.appendChild(canvas);
+
+                const sampleCanvas = document.createElement('canvas');
+                sampleCanvas.width = 72;
+                sampleCanvas.height = 72;
+                const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+
+                const layerState = {
+                    canvas: canvas,
+                    ctx: ctx,
+                    isDrawing: false,
+                    completed: false,
+                    lastPoint: null,
+                    width: rect.width,
+                    getClearedRatio: function() {
+                        sampleCtx.clearRect(0, 0, sampleCanvas.width, sampleCanvas.height);
+                        sampleCtx.drawImage(canvas, 0, 0, sampleCanvas.width, sampleCanvas.height);
+                        const image = sampleCtx.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height).data;
+                        let transparentPixels = 0;
+                        for (let i = 3; i < image.length; i += 4) {
+                            if (image[i] < 18) {
+                                transparentPixels += 1;
+                            }
+                        }
+                        return transparentPixels / (sampleCanvas.width * sampleCanvas.height);
+                    }
+                };
+
+                bindScratchEvents(layerState);
+                return layerState;
+            }
         }
+
 
         // Teddy Day - Peekaboo
         function startPeekaboo(dayIndex) {
@@ -1140,7 +1351,7 @@ function startRunAway(dayIndex) {
             switch (day.challenge) {
                 case 'colorChange': startColorChange(dayIndex); break;
                 case 'runAway': startRunAway(dayIndex); break;
-                case 'melt': startMelt(dayIndex); break;
+                case 'chocolateSwipe': startChocolateSwipe(dayIndex); break;
                 case 'peekaboo': startPeekaboo(dayIndex); break;
                 case 'threeTaps': startThreeTaps(dayIndex); break;
                 case 'simultaneous': startSimultaneous(dayIndex); break;
