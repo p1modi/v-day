@@ -825,37 +825,150 @@
         }
 
         /* OTHER GAMES (same as test) */
-        function startPeekaboo(dayIndex){
-            const gameArea=document.getElementById('gameArea');
-            const day=days[dayIndex];
-            gameArea.innerHTML='<div class="instruction" id="instruction">'+day.instruction+'</div><div class="message" id="message"></div>';
+       function startPeekaboo(dayIndex) {
+    const gameArea = document.getElementById('gameArea');
+    const day = days[dayIndex];
 
-            const sprite=document.createElement('div');
-            sprite.className='sprite';
-            sprite.textContent=day.emoji;
-            sprite.style.left='50%';
-            sprite.style.top='50%';
-            sprite.style.transform='translate(-50%,-50%)';
-            sprite.style.opacity='0';
-            gameArea.appendChild(sprite);
+    // Clean slate
+    gameArea.innerHTML = '<div class="instruction" id="instruction"></div><div class="message" id="message"></div>';
+    showMessage('Where could I be hiding? 👀');
 
-            showMessage(day.messages.hiding);
+    // Internal state (self-contained)
+    let foundCount = 0;
+    let currentSpot = null;
+    let lastPeekTime = 0;
+    let peekTimer = null;
+    let peekEl = null;
 
-            const peekInterval=setInterval(()=>{
-                sprite.style.opacity='1';
-                setTimeout(()=>sprite.style.opacity='0', 1000);
-            },2000);
+    // Furniture setup
+    const furnitureConfig = [
+        { key: 'couch', emoji: '🛋️', left: '15%', top: '65%' },   // bottom-left
+        { key: 'bed',   emoji: '🛏️', left: '65%', top: '65%' },   // bottom-right
+        { key: 'door',  emoji: '🚪', left: '15%', top: '15%' },   // top-left
+        { key: 'window',emoji: '🪟', left: '65%', top: '15%' }    // top-right
+    ];
 
-            sprite.addEventListener('click', (e)=>{
-                if(sprite.style.opacity==='1'){
-                    clearInterval(peekInterval);
-                    sprite.style.opacity='1';
-                    createHearts(e.clientX,e.clientY);
-                    sprite.style.animation='bounce 0.5s ease';
-                    setTimeout(()=>{ sprite.remove(); collectSprite(dayIndex, e.clientX, e.clientY); },500);
-                }
-            });
+    const furnitureEls = {};
+
+    furnitureConfig.forEach(cfg => {
+        const el = document.createElement('div');
+        el.className = 'sprite';
+        el.textContent = cfg.emoji;
+        el.style.left = cfg.left;
+        el.style.top = cfg.top;
+        el.style.fontSize = '3.5rem';
+        el.style.animation = 'heartbeat 2s ease-in-out infinite';
+        el.style.transition = 'transform 0.25s ease';
+        gameArea.appendChild(el);
+        furnitureEls[cfg.key] = el;
+
+        el.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const now = Date.now();
+            const isCorrect = (cfg.key === currentSpot) && (now - lastPeekTime <= 1500);
+
+            if (!isCorrect) {
+                // Wrong guess
+                el.style.transform = 'scale(1.15) rotate(-5deg)';
+                setTimeout(() => { el.style.transform = ''; }, 250);
+                showMessage('Not here! 👀');
+                return;
+            }
+
+            // Correct guess
+            foundCount++;
+            showMessage('Found me! 🧸');
+
+            if (peekEl) {
+                peekEl.remove();
+                peekEl = null;
+            }
+
+            const teddy = document.createElement('div');
+            teddy.className = 'sprite';
+            teddy.textContent = '🧸';
+            teddy.style.left = cfg.left;
+            teddy.style.top = cfg.top;
+            teddy.style.fontSize = '4rem';
+            teddy.style.animation = 'bounce 0.6s ease';
+            gameArea.appendChild(teddy);
+
+            createHearts(e.clientX, e.clientY);
+
+            setTimeout(() => teddy.remove(), 700);
+
+            if (foundCount >= 3) {
+                clearTimeout(peekTimer);
+                createParticles(e.clientX, e.clientY);
+                setTimeout(() => {
+                    showMessage('');
+                    collectSprite(dayIndex);
+                }, 600);
+                return;
+            }
+
+            // Pick a new spot (different from previous)
+            pickNewSpot();
+        });
+    });
+
+    function pickNewSpot() {
+        const keys = Object.keys(furnitureEls).filter(k => k !== currentSpot);
+        currentSpot = keys[Math.floor(Math.random() * keys.length)];
+        schedulePeek();
+    }
+
+    function schedulePeek() {
+        clearTimeout(peekTimer);
+        const delay = 2000 + Math.random() * 1000;
+        peekTimer = setTimeout(showPeek, delay);
+    }
+
+    function showPeek() {
+        if (peekEl) {
+            peekEl.remove();
+            peekEl = null;
         }
+
+        const spotEl = furnitureEls[currentSpot];
+        const rect = spotEl.getBoundingClientRect();
+        const areaRect = gameArea.getBoundingClientRect();
+
+        peekEl = document.createElement('div');
+        peekEl.textContent = '🧸';
+        peekEl.style.position = 'absolute';
+        peekEl.style.fontSize = '2.5rem';
+        peekEl.style.left = (rect.left - areaRect.left + rect.width * 0.6) + 'px';
+        peekEl.style.top = (rect.top - areaRect.top + rect.height * 0.2) + 'px';
+        peekEl.style.opacity = '0';
+        peekEl.style.transition = 'opacity 0.3s ease';
+        gameArea.appendChild(peekEl);
+
+        requestAnimationFrame(() => {
+            peekEl.style.opacity = '1';
+        });
+
+        lastPeekTime = Date.now();
+
+        // Hide after 1 second
+        setTimeout(() => {
+            if (peekEl) {
+                peekEl.style.opacity = '0';
+                setTimeout(() => {
+                    if (peekEl) {
+                        peekEl.remove();
+                        peekEl = null;
+                    }
+                }, 300);
+            }
+            schedulePeek();
+        }, 1000);
+    }
+
+    // Start game
+    pickNewSpot();
+}
+
 
         function startThreeTaps(dayIndex){
             const gameArea=document.getElementById('gameArea');
