@@ -824,28 +824,27 @@
             let activeLayer=createLayer(layerStyles[layerIndex]);
         }
 
-        /* OTHER GAMES (same as test) */
-       function startPeekaboo(dayIndex) {
+        /* teddy */
+function startPeekaboo(dayIndex) {
     const gameArea = document.getElementById('gameArea');
-    const day = days[dayIndex];
 
-    // Clean slate
+    // Clean slate (no intro text)
     gameArea.innerHTML = '<div class="instruction" id="instruction"></div><div class="message" id="message"></div>';
-    showMessage('Where could I be hiding? 👀');
 
-    // Internal state (self-contained)
+    // Internal state
     let foundCount = 0;
     let currentSpot = null;
     let lastPeekTime = 0;
     let peekTimer = null;
     let peekEl = null;
+    let pulseTimer = null;
 
-    // Furniture setup
+    // Furniture setup (larger)
     const furnitureConfig = [
-        { key: 'couch', emoji: '🛋️', left: '15%', top: '65%' },   // bottom-left
-        { key: 'bed',   emoji: '🛏️', left: '65%', top: '65%' },   // bottom-right
-        { key: 'door',  emoji: '🚪', left: '15%', top: '15%' },   // top-left
-        { key: 'window',emoji: '🪟', left: '65%', top: '15%' }    // top-right
+        { key: 'couch',  emoji: '🛋️', left: '10%', top: '65%' },
+        { key: 'bed',    emoji: '🛏️', left: '65%', top: '65%' },
+        { key: 'door',   emoji: '🚪', left: '10%', top: '10%' },
+        { key: 'window', emoji: '🪟', left: '65%', top: '10%' }
     ];
 
     const furnitureEls = {};
@@ -856,8 +855,7 @@
         el.textContent = cfg.emoji;
         el.style.left = cfg.left;
         el.style.top = cfg.top;
-        el.style.fontSize = '3.5rem';
-        el.style.animation = 'heartbeat 2s ease-in-out infinite';
+        el.style.fontSize = '5rem'; // much larger
         el.style.transition = 'transform 0.25s ease';
         gameArea.appendChild(el);
         furnitureEls[cfg.key] = el;
@@ -865,19 +863,17 @@
         el.addEventListener('click', function (e) {
             e.stopPropagation();
             const now = Date.now();
-            const isCorrect = (cfg.key === currentSpot) && (now - lastPeekTime <= 1500);
+            const isCorrect = (cfg.key === currentSpot) && (now - lastPeekTime <= 750); // harder
 
             if (!isCorrect) {
-                // Wrong guess
-                el.style.transform = 'scale(1.15) rotate(-5deg)';
-                setTimeout(() => { el.style.transform = ''; }, 250);
+                el.style.transform = 'scale(1.15) rotate(-4deg)';
+                setTimeout(() => { el.style.transform = ''; }, 200);
                 showMessage('Not here! 👀');
                 return;
             }
 
-            // Correct guess
+            // Correct
             foundCount++;
-            showMessage('Found me! 🧸');
 
             if (peekEl) {
                 peekEl.remove();
@@ -889,25 +885,30 @@
             teddy.textContent = '🧸';
             teddy.style.left = cfg.left;
             teddy.style.top = cfg.top;
-            teddy.style.fontSize = '4rem';
-            teddy.style.animation = 'bounce 0.6s ease';
+            teddy.style.fontSize = '4.5rem';
+            teddy.style.animation = 'bounce 0.5s ease';
             gameArea.appendChild(teddy);
 
             createHearts(e.clientX, e.clientY);
 
-            setTimeout(() => teddy.remove(), 700);
+            setTimeout(() => teddy.remove(), 500);
 
             if (foundCount >= 3) {
                 clearTimeout(peekTimer);
+                clearInterval(pulseTimer);
+
+                // remove all furniture
+                Object.values(furnitureEls).forEach(el => el.remove());
+
                 createParticles(e.clientX, e.clientY);
+                showMessage('Happy Teddy Day babe 💗🧸');
+
                 setTimeout(() => {
-                    showMessage('');
                     collectSprite(dayIndex);
-                }, 600);
+                }, 700);
                 return;
             }
 
-            // Pick a new spot (different from previous)
             pickNewSpot();
         });
     });
@@ -920,7 +921,7 @@
 
     function schedulePeek() {
         clearTimeout(peekTimer);
-        const delay = 2000 + Math.random() * 1000;
+        const delay = 2000 + Math.random() * 800;
         peekTimer = setTimeout(showPeek, delay);
     }
 
@@ -937,11 +938,11 @@
         peekEl = document.createElement('div');
         peekEl.textContent = '🧸';
         peekEl.style.position = 'absolute';
-        peekEl.style.fontSize = '2.5rem';
-        peekEl.style.left = (rect.left - areaRect.left + rect.width * 0.6) + 'px';
-        peekEl.style.top = (rect.top - areaRect.top + rect.height * 0.2) + 'px';
+        peekEl.style.fontSize = '2.2rem';
+        peekEl.style.left = (rect.left - areaRect.left + rect.width * 0.65) + 'px';
+        peekEl.style.top = (rect.top - areaRect.top + rect.height * 0.25) + 'px';
         peekEl.style.opacity = '0';
-        peekEl.style.transition = 'opacity 0.3s ease';
+        peekEl.style.transition = 'opacity 0.2s ease';
         gameArea.appendChild(peekEl);
 
         requestAnimationFrame(() => {
@@ -950,7 +951,7 @@
 
         lastPeekTime = Date.now();
 
-        // Hide after 1 second
+        // Hide faster
         setTimeout(() => {
             if (peekEl) {
                 peekEl.style.opacity = '0';
@@ -959,17 +960,28 @@
                         peekEl.remove();
                         peekEl = null;
                     }
-                }, 300);
+                }, 150);
             }
             schedulePeek();
-        }, 1000);
+        }, 500);
     }
 
-    // Start game
+    // Random single-furniture pulse (independent of teddy)
+    pulseTimer = setInterval(() => {
+        const keys = Object.keys(furnitureEls);
+        if (!keys.length) return;
+        const el = furnitureEls[keys[Math.floor(Math.random() * keys.length)]];
+        el.style.transform = 'scale(1.15)';
+        setTimeout(() => { el.style.transform = ''; }, 250);
+    }, 1200 + Math.random() * 800);
+
+    // Start
     pickNewSpot();
 }
 
 
+
+        /*OTHER GAMES*/
         function startThreeTaps(dayIndex){
             const gameArea=document.getElementById('gameArea');
             const day=days[dayIndex];
