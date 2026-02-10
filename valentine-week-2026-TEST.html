@@ -1165,45 +1165,126 @@ function startPeekaboo(dayIndex) {
         
 
         /* =========================================================
-           PROMISE / HUG / KISS / FINALE (kept as your rich versions)
+           PROMISE 
         ========================================================= */
-        
         function startThreeTaps(dayIndex) {
-            const gameArea = document.getElementById('gameArea');
-            const day = days[dayIndex];
+    const gameArea = document.getElementById('gameArea');
+    const day = days[dayIndex];
 
-            gameArea.innerHTML = '<div class="instruction" id="instruction">' + day.instruction + '</div><div class="message" id="message"></div>';
+    // Clean slate
+    gameArea.innerHTML = '<div class="instruction" id="instruction"></div><div class="message" id="message"></div>';
 
-            const sprite = document.createElement('div');
-            sprite.className = 'sprite';
-            sprite.textContent = day.emoji;
-            sprite.style.left = '50%';
-            sprite.style.top = '50%';
-            sprite.style.transform = 'translate(-50%, -50%)';
-            gameArea.appendChild(sprite);
+    // Pinky sprites
+    const pinky1 = document.createElement('div');
+    pinky1.className = 'sprite';
+    pinky1.textContent = '🤙';
+    pinky1.style.left = '25%';
+    pinky1.style.top = '50%';
+    pinky1.style.transform = 'translate(-50%, -50%)';
 
-            let tapCount = 0;
-            const messages = [day.messages.first, day.messages.second, day.messages.third];
-            showMessage(messages[0]);
+    const pinky2 = document.createElement('div');
+    pinky2.className = 'sprite';
+    pinky2.textContent = '🤙';
+    pinky2.style.left = '75%';
+    pinky2.style.top = '50%';
+    pinky2.style.transform = 'translate(-50%, -50%) scaleX(-1)'; // flipped
 
-            sprite.addEventListener('click', function (e) {
-                tapCount++;
-                sprite.style.transform = 'translate(-50%, -50%) scale(1.2)';
-                setTimeout(function () { sprite.style.transform = 'translate(-50%, -50%) scale(1)'; }, 200);
+    gameArea.appendChild(pinky1);
+    gameArea.appendChild(pinky2);
 
-                if (tapCount < 3) {
-                    showMessage(messages[tapCount]);
-                    createParticles(e.clientX, e.clientY);
-                } else {
-                    createHearts(e.clientX, e.clientY);
-                    sprite.style.animation = 'heartbeat 0.5s ease';
-                    setTimeout(function () {
-                        sprite.remove();
-                        collectSprite(dayIndex, e.clientX, e.clientY);
-                    }, 500);
-                }
-            });
+    let moving = false;
+    let vx1 = 0, vy1 = 0, vx2 = 0, vy2 = 0;
+    let moveTimer = null;
+
+    function randomVelocity() {
+        const speed = 1.2 + Math.random() * 1.2;
+        const angle = Math.random() * Math.PI * 2;
+        return { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
+    }
+
+    function startMoving() {
+        if (moving) return;
+        moving = true;
+
+        const v1 = randomVelocity();
+        const v2 = randomVelocity();
+        vx1 = v1.x; vy1 = v1.y;
+        vx2 = v2.x; vy2 = v2.y;
+
+        moveTimer = setInterval(() => {
+            moveSprite(pinky1, vx1, vy1);
+            moveSprite(pinky2, vx2, vy2);
+
+            // occasionally change direction
+            if (Math.random() < 0.02) {
+                const nv = randomVelocity();
+                vx1 = nv.x; vy1 = nv.y;
+            }
+            if (Math.random() < 0.02) {
+                const nv = randomVelocity();
+                vx2 = nv.x; vy2 = nv.y;
+            }
+        }, 16);
+    }
+
+    function stopMoving(e) {
+        if (!moving) return;
+        moving = false;
+        clearInterval(moveTimer);
+
+        if (areOverlapping()) {
+            createHearts(e.clientX, e.clientY);
+            createParticles(e.clientX, e.clientY);
+
+            pinky1.remove();
+            pinky2.remove();
+
+            showMessage('Promise made! I got your back and you got mine. Happy Promise Day babe! 💗');
+
+            setTimeout(() => {
+                collectSprite(dayIndex, e.clientX, e.clientY);
+            }, 800);
         }
+    }
+
+    function moveSprite(el, vx, vy) {
+        const rect = el.getBoundingClientRect();
+        const area = gameArea.getBoundingClientRect();
+
+        let x = rect.left - area.left + vx;
+        let y = rect.top - area.top + vy;
+
+        if (x < 0 || x > area.width - rect.width) vx *= -1;
+        if (y < 0 || y > area.height - rect.height) vy *= -1;
+
+        el.style.left = x + rect.width / 2 + 'px';
+        el.style.top = y + rect.height / 2 + 'px';
+    }
+
+    function areOverlapping() {
+        const r1 = pinky1.getBoundingClientRect();
+        const r2 = pinky2.getBoundingClientRect();
+        return !(
+            r1.right < r2.left ||
+            r1.left > r2.right ||
+            r1.bottom < r2.top ||
+            r1.top > r2.bottom
+        );
+    }
+
+    // Hold to move, release to check
+    gameArea.addEventListener('pointerdown', startMoving);
+    gameArea.addEventListener('pointerup', stopMoving);
+    gameArea.addEventListener('pointercancel', () => {
+        moving = false;
+        clearInterval(moveTimer);
+    });
+}
+    
+    
+        /* =========================================================
+          HUG / KISS / FINALE (kept as your rich versions)
+        ========================================================= */
 
         function startSimultaneous(dayIndex) {
             const gameArea = document.getElementById('gameArea');
