@@ -1167,13 +1167,20 @@ function startPeekaboo(dayIndex) {
         /* =========================================================
            PROMISE 
         ========================================================= */
-  function startThreeTaps(dayIndex) {
+function startThreeTaps(dayIndex) {
     const gameArea = document.getElementById('gameArea');
 
     // Clean slate
-    gameArea.innerHTML = '<div class="instruction" id="instruction"></div><div class="message" id="message"></div>';
+    gameArea.innerHTML =
+        '<div class="instruction" id="instruction"></div>' +
+        '<div class="message" id="message"></div>';
 
-    // Pinky emojis
+    // Disable text selection aggressively (iOS-safe)
+    gameArea.style.userSelect = 'none';
+    gameArea.style.webkitUserSelect = 'none';
+    gameArea.style.webkitTouchCallout = 'none';
+
+    // Hands
     const leftHand = document.createElement('div');
     leftHand.className = 'sprite';
     leftHand.textContent = '🫳🏽';
@@ -1190,22 +1197,21 @@ function startPeekaboo(dayIndex) {
     gameArea.appendChild(leftHand);
     gameArea.appendChild(rightHand);
 
-    // Hold pad (dedicated interaction zone)
+    // Hold control (circle, bottom-right)
     const holdPad = document.createElement('div');
     holdPad.style.cssText = `
         position:absolute;
-        left:50%;
-        bottom:20px;
-        transform:translateX(-50%);
-        background:rgba(139,122,168,0.25);
-        color:#6b4c8a;
-        padding:14px 22px;
-        border-radius:30px;
-        font-size:0.95rem;
-        user-select:none;
+        right:16px;
+        bottom:16px;
+        width:64px;
+        height:64px;
+        border-radius:50%;
+        background:rgba(139,122,168,0.35);
         touch-action:none;
+        user-select:none;
+        -webkit-user-select:none;
+        -webkit-touch-callout:none;
     `;
-    holdPad.textContent = 'Press & hold';
     gameArea.appendChild(holdPad);
 
     let moving = false;
@@ -1213,7 +1219,7 @@ function startPeekaboo(dayIndex) {
     let rafId = null;
 
     function randomVelocity() {
-        const speed = 3.5 + Math.random() * 2.5; // fast
+        const speed = 2 + Math.random() * 5; // slow → fast randomness
         const angle = Math.random() * Math.PI * 2;
         return { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
     }
@@ -1223,10 +1229,8 @@ function startPeekaboo(dayIndex) {
         if (moving) return;
         moving = true;
 
-        const v1 = randomVelocity();
-        const v2 = randomVelocity();
-        vx1 = v1.x; vy1 = v1.y;
-        vx2 = v2.x; vy2 = v2.y;
+        ({ x: vx1, y: vy1 } = randomVelocity());
+        ({ x: vx2, y: vy2 } = randomVelocity());
 
         animate();
     }
@@ -1237,71 +1241,89 @@ function startPeekaboo(dayIndex) {
         moving = false;
         cancelAnimationFrame(rafId);
 
-        if (areOverlapping()) {
-            createHearts(e.clientX, e.clientY);
-            createParticles(e.clientX, e.clientY);
-
-            leftHand.remove();
-            rightHand.remove();
-            holdPad.remove();
-
-            showMessage('Promise made! I got your back and you got mine. Happy Promise Day babe! 💗');
-
-            setTimeout(() => {
-                collectSprite(dayIndex, e.clientX, e.clientY);
-            }, 900);
+        if (areStronglyOverlapping()) {
+            completePromise(e.clientX, e.clientY);
         }
     }
 
     function animate() {
         if (!moving) return;
 
-        moveSprite(leftHand, () => ({ x: vx1, y: vy1 }), v => { vx1 = v.x; vy1 = v.y; });
-        moveSprite(rightHand, () => ({ x: vx2, y: vy2 }), v => { vx2 = v.x; vy2 = v.y; });
+        moveSprite(leftHand, v => { vx1 = v.x; vy1 = v.y; }, vx1, vy1);
+        moveSprite(rightHand, v => { vx2 = v.x; vy2 = v.y; }, vx2, vy2);
 
-        // random direction nudges
-        if (Math.random() < 0.02) ({ x: vx1, y: vy1 } = randomVelocity());
-        if (Math.random() < 0.02) ({ x: vx2, y: vy2 } = randomVelocity());
+        // Random speed + direction changes
+        if (Math.random() < 0.03) ({ x: vx1, y: vy1 } = randomVelocity());
+        if (Math.random() < 0.03) ({ x: vx2, y: vy2 } = randomVelocity());
 
         rafId = requestAnimationFrame(animate);
     }
 
-    function moveSprite(el, getV, setV) {
+    function moveSprite(el, setV, vx, vy) {
         const area = gameArea.getBoundingClientRect();
-        const rect = el.getBoundingClientRect();
-        let { x, y } = getV();
+        const r = el.getBoundingClientRect();
 
-        let left = rect.left - area.left + x;
-        let top = rect.top - area.top + y;
+        let x = r.left - area.left + vx;
+        let y = r.top - area.top + vy;
 
-        if (left < 0 || left > area.width - rect.width) x *= -1;
-        if (top < 0 || top > area.height - rect.height) y *= -1;
+        if (x < 0 || x > area.width - r.width) vx *= -1;
+        if (y < 0 || y > area.height - r.height) vy *= -1;
 
-        setV({ x, y });
+        setV({ x: vx, y: vy });
 
-        el.style.left = (rect.left - area.left + x) + 'px';
-        el.style.top = (rect.top - area.top + y) + 'px';
+        el.style.left = (r.left - area.left + vx) + 'px';
+        el.style.top = (r.top - area.top + vy) + 'px';
     }
 
-    function areOverlapping() {
+    // Require strong overlap (≈60% area intersection)
+    function areStronglyOverlapping() {
         const r1 = leftHand.getBoundingClientRect();
         const r2 = rightHand.getBoundingClientRect();
-        return !(
-            r1.right < r2.left ||
-            r1.left > r2.right ||
-            r1.bottom < r2.top ||
-            r1.top > r2.bottom
-        );
+
+        const xOverlap = Math.max(0, Math.min(r1.right, r2.right) - Math.max(r1.left, r2.left));
+        const yOverlap = Math.max(0, Math.min(r1.bottom, r2.bottom) - Math.max(r1.top, r2.top));
+        const overlapArea = xOverlap * yOverlap;
+
+        const minArea = Math.min(r1.width * r1.height, r2.width * r2.height);
+        return overlapArea > minArea * 0.6;
     }
 
-    // Pointer-safe hold control
+    function completePromise(x, y) {
+        leftHand.remove();
+        rightHand.remove();
+        holdPad.remove();
+
+        const handshake = document.createElement('div');
+        handshake.className = 'sprite';
+        handshake.textContent = '🤝🏽';
+        handshake.style.left = '50%';
+        handshake.style.top = '45%';
+        handshake.style.transform = 'translate(-50%, -50%)';
+        handshake.style.fontSize = '4.5rem';
+        handshake.style.animation = 'heartbeat 0.8s ease-in-out infinite';
+        gameArea.appendChild(handshake);
+
+        createHearts(x, y);
+        createParticles(x, y);
+
+        // Glow + pulse for 3s
+        setTimeout(() => {
+            handshake.remove();
+            showMessage('Promise made! I got your back and you got mine. Happy Promise Day babe! 💗');
+
+            setTimeout(() => {
+                collectSprite(dayIndex, x, y);
+            }, 5000);
+        }, 3000);
+    }
+
+    // Pointer-safe handlers
     holdPad.addEventListener('pointerdown', startMoving);
     holdPad.addEventListener('pointerup', stopMoving);
     holdPad.addEventListener('pointerleave', stopMoving);
     holdPad.addEventListener('pointercancel', stopMoving);
 }
 
-    
     
         /* =========================================================
           HUG / KISS / FINALE (kept as your rich versions)
