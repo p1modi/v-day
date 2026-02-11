@@ -1357,9 +1357,9 @@ function startSimultaneous(dayIndex) {
         st.id = 'hugShiverStyle';
         st.textContent = `
             @keyframes hugShiverY {
-                0%   { transform: perspective(600px) rotateY(-8deg); }
-                50%  { transform: perspective(600px) rotateY(8deg); }
-                100% { transform: perspective(600px) rotateY(-8deg); }
+                0%   { transform: perspective(600px) rotateY(-16deg); }
+                50%  { transform: perspective(600px) rotateY(16deg); }
+                100% { transform: perspective(600px) rotateY(-16deg); }
             }
             @keyframes hugGlowPulse {
                 0%,100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255,180,120,0.55)); }
@@ -1421,7 +1421,7 @@ function startSimultaneous(dayIndex) {
     function setShiverStrength(warmth01) {
         // As warmth increases, shiver becomes slower + smaller
         const amp = 8 - Math.round(warmth01 * 6);               // 8deg -> 2deg
-        const dur = Math.max(55, 95 - Math.round(warmth01 * 45)); // ~95ms -> ~55ms
+        const dur = Math.max(40, 75 - Math.round(warmth01 * 45)); // ~95ms -> ~55ms
 
         // We can't parametrize keyframes directly, so we approximate by changing duration and swapping transforms
         face.style.animation = `hugShiverY ${dur}ms ease-in-out infinite`;
