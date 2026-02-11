@@ -1486,8 +1486,8 @@ function startSimultaneous(dayIndex) {
 
         if (since > 80 && streak > 0) {
             // After you stop, ramp down over DECAY_MS
-            const drop = Math.ceil((since / DECAY_MS) * 0.5); // mild, not insane
-            if (since > 120) streak = Math.max(0, streak - drop);
+            const drop = Math.ceil((since / DECAY_MS) * 1); // mild, not insane
+            if (since > 120) streak = Math.max(0, streak - 2);
         }
 
         // If fully cooled, ensure glow transitions out smoothly over 1.5s
