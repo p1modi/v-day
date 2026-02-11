@@ -1501,11 +1501,11 @@ function startSimultaneous(dayIndex) {
             if (!hasRubbed || (now - lastContactTime > FULL_RESET_DELAY)) return;
 
             emojiIsSurprised = !emojiIsSurprised;
-            face.textContent = emojiIsSurprised ? '😲' : '🥶';
+            face.textContent = emojiIsSurprised ? '😳' : '🥶';
 
             // Shiver only when cold face is showing
             face.style.animation = emojiIsSurprised ? '' : 'hugShiverY 75ms ease-in-out infinite';
-        }, 260);
+        }, 3000);
     }
 
     function stopToggleSurprise() {
