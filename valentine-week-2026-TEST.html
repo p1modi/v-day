@@ -1486,7 +1486,7 @@ function startSimultaneous(dayIndex) {
 
         if (since > 80 && streak > 0) {
             // After you stop, ramp down over DECAY_MS
-            const drop = Math.ceil((since / DECAY_MS) * 2); // mild, not insane
+            const drop = Math.ceil((since / DECAY_MS) * 1); // mild, not insane
             if (since > 120) streak = Math.max(0, streak - drop);
         }
 
