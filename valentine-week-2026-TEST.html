@@ -1351,6 +1351,30 @@ function startSimultaneous(dayIndex) {
     let completed = false;
     let tapCooldown = false;
 
+    // NEW: for hold-burst + instant emoji switch on first rub
+    let holdBurstTimer = null;
+    let hasRubbed = false;
+
+    /* =========================
+       Restore shiver mechanism (exactly like your original)
+    ========================== */
+    if (!document.getElementById('hugShiverStyle')) {
+        const st = document.createElement('style');
+        st.id = 'hugShiverStyle';
+        st.textContent = `
+            @keyframes hugShiverY {
+                0%   { transform: perspective(600px) rotateY(-16deg); }
+                50%  { transform: perspective(600px) rotateY(16deg); }
+                100% { transform: perspective(600px) rotateY(-16deg); }
+            }
+            @keyframes hugGlowPulse {
+                0%,100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255,180,120,0.55)); }
+                50%     { transform: scale(1.18); filter: drop-shadow(0 0 22px rgba(255,180,120,0.85)); }
+            }
+        `;
+        document.head.appendChild(st);
+    }
+
     /* =========================
        Softer warm background
     ========================== */
@@ -1386,6 +1410,7 @@ function startSimultaneous(dayIndex) {
         align-items:center;
         justify-content:center;
         z-index:5;
+        pointer-events:none;
     `;
     gameArea.appendChild(centerWrap);
 
@@ -1394,6 +1419,9 @@ function startSimultaneous(dayIndex) {
     face.textContent = '🥶';
     face.style.fontSize = '5.5rem';
     face.style.pointerEvents = 'auto';
+    face.style.touchAction = 'none';
+    // Start shivering immediately
+    face.style.animation = 'hugShiverY 75ms ease-in-out infinite';
     centerWrap.appendChild(face);
 
     function warmth01() {
@@ -1408,40 +1436,66 @@ function startSimultaneous(dayIndex) {
 
         face.style.transform = `scale(${1 + w * 0.2})`;
 
-        if (w > 0.3) face.textContent = '😳';
-        if (w > 0.6) face.textContent = '🤗';
-        if (w > 0.9) face.textContent = '🫂';
+        // Only switch based on warmth AFTER first rub triggers instant switch
+        if (!hasRubbed) {
+            // keep cold face until rub happens (but still allow shiver)
+            face.textContent = '🥶';
+        } else {
+            if (w > 0.9) face.textContent = '🫂';
+            else face.textContent = '🤗';
+        }
     }
 
-    function burstBig(x, y) {
-        const emojis = ['💗','🔥','💖','❤️','💞','✨','🔥','💗','🔥'];
+    function burstBig(x, y, count = 30) {
+        // Increased fire ratio
+        const emojis = ['🔥','🔥','🔥','🔥','🔥','💗','🔥','💖','🔥','❤️','🔥','💞','🔥','✨'];
 
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < count; i++) {
             const p = document.createElement('div');
             p.className = 'particle';
-            p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+            p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
             p.style.left = x + 'px';
             p.style.top = y + 'px';
-            p.style.fontSize = (1.4 + Math.random()*2.5) + 'rem';
+            p.style.fontSize = (1.4 + Math.random() * 2.5) + 'rem';
             gameArea.appendChild(p);
 
-            const tx = (Math.random()-0.5)*300;
-            const ty = -180 - Math.random()*200;
+            const tx = (Math.random() - 0.5) * 300;
+            const ty = -180 - Math.random() * 200;
 
             p.animate([
-                { transform:'translate(0,0) scale(1)', opacity:1 },
-                { transform:`translate(${tx}px,${ty}px) scale(0.5)`, opacity:0 }
-            ], { duration:1000 }).onfinish = () => p.remove();
+                { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                { transform: `translate(${tx}px,${ty}px) scale(0.5)`, opacity: 0 }
+            ], { duration: 1000 }).onfinish = () => p.remove();
+        }
+    }
+
+    function startHoldBurst() {
+        if (holdBurstTimer) return;
+
+        holdBurstTimer = setInterval(() => {
+            if (!holding || completed) return;
+            // emit constant bursts while holding
+            const x = lastMove?.x ?? (gameArea.getBoundingClientRect().left + gameArea.getBoundingClientRect().width / 2);
+            const y = lastMove?.y ?? (gameArea.getBoundingClientRect().top + gameArea.getBoundingClientRect().height / 2);
+            burstBig(x, y, 14);
+        }, 220); // constant "shower"
+    }
+
+    function stopHoldBurst() {
+        if (holdBurstTimer) {
+            clearInterval(holdBurstTimer);
+            holdBurstTimer = null;
         }
     }
 
     function complete(x, y) {
         completed = true;
+        stopHoldBurst();
 
         face.textContent = '🫂';
         face.style.animation = 'heartbeat 1s ease-in-out infinite';
 
-        burstBig(x, y);
+        burstBig(x, y, 40);
         createParticles(x, y);
 
         showMessage("My hugs will always keep you warm 🫂\nHappy Hug Day babe! 🤗💗");
@@ -1454,10 +1508,10 @@ function startSimultaneous(dayIndex) {
     /* =========================
        Interaction logic
     ========================== */
-
     function onPointerDown(e) {
         if (completed) return;
         if (e.target !== face) return;
+        if (e.cancelable) e.preventDefault();
 
         holding = true;
         lastContactTime = Date.now();
@@ -1465,16 +1519,20 @@ function startSimultaneous(dayIndex) {
 
         // Strong single tap burst (no stacking)
         if (!tapCooldown) {
-            burstBig(e.clientX, e.clientY);
+            burstBig(e.clientX, e.clientY, 34);
             warmBg.style.opacity = 0.4;
             warmBg.style.transform = 'scale(1.1)';
             setTimeout(() => {
                 warmBg.style.opacity = warmth01();
-                warmBg.style.transform = `scale(${0.2 + warmth01()*1.8})`;
+                warmBg.style.transform = `scale(${0.2 + warmth01() * 1.8})`;
             }, 400);
+
             tapCooldown = true;
             setTimeout(() => tapCooldown = false, 2000);
         }
+
+        // NEW: constant burst while holding
+        startHoldBurst();
     }
 
     function onPointerMove(e) {
@@ -1483,7 +1541,13 @@ function startSimultaneous(dayIndex) {
 
         const dx = e.clientX - lastMove.x;
         const dy = e.clientY - lastMove.y;
-        const distance = Math.sqrt(dx*dx + dy*dy);
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Tap+hold+rub: on first meaningful movement, instantly switch to second emoji in sequence
+        if (!hasRubbed && distance > 4) {
+            hasRubbed = true;
+            face.textContent = '🤗'; // immediate switch on first rub
+        }
 
         if (distance > 4) {
             warmTime += distance * 8; // slower heat gain
@@ -1495,12 +1559,13 @@ function startSimultaneous(dayIndex) {
 
     function onPointerUp() {
         holding = false;
+        stopHoldBurst();
     }
 
-    face.addEventListener('pointerdown', onPointerDown);
-    face.addEventListener('pointermove', onPointerMove);
-    face.addEventListener('pointerup', onPointerUp);
-    face.addEventListener('pointercancel', onPointerUp);
+    face.addEventListener('pointerdown', onPointerDown, { passive: false });
+    face.addEventListener('pointermove', onPointerMove, { passive: true });
+    face.addEventListener('pointerup', onPointerUp, { passive: true });
+    face.addEventListener('pointercancel', onPointerUp, { passive: true });
 
     /* =========================
        Main loop
@@ -1516,9 +1581,17 @@ function startSimultaneous(dayIndex) {
 
         if (now - lastContactTime > FULL_RESET_DELAY) {
             warmTime = 0;
+            hasRubbed = false;              // reset sequence if fully cold
+            face.textContent = '🥶';
+            face.style.animation = 'hugShiverY 75ms ease-in-out infinite';
         }
 
         warmTime = Math.max(0, warmTime);
+
+        // Ensure shiver stops once rubbing has begun (optional but feels right)
+        if (hasRubbed && face.style.animation.includes('hugShiverY')) {
+            face.style.animation = ''; // stop shiver once you "warm" them
+        }
 
         updateVisuals();
 
