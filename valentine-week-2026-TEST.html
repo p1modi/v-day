@@ -1550,7 +1550,7 @@ function startSimultaneous(dayIndex) {
 
         // Keep it a continuous streak: tap too slow => streak doesn't grow meaningfully
         if (gap > MAX_GAP_MS) {
-            streak = Math.max(0, Math.floor(streak * 0.4)); // harsh penalty for slow tap
+            streak = Math.max(0, Math.floor(streak * 0.7)); // harsh penalty for slow tap
         }
 
         streak = Math.min(TAP_TARGET, streak + 1);
