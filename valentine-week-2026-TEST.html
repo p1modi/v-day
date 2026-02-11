@@ -1344,7 +1344,7 @@ function startSimultaneous(dayIndex) {
     gameArea.style.touchAction = 'none';
 
     const TAP_TARGET = 18;                 // slightly easier than 35, but still “continuous”
-    const MAX_GAP_MS = 3000;                // if taps slower than this, streak decays hard
+    const MAX_GAP_MS = 5000;                // if taps slower than this, streak decays hard
     const DECAY_MS = 1500;                 // glow fades out in ~1.5s when you stop
     let completed = false;
 
@@ -1550,7 +1550,7 @@ function startSimultaneous(dayIndex) {
 
         // Keep it a continuous streak: tap too slow => streak doesn't grow meaningfully
         if (gap > MAX_GAP_MS) {
-            streak = Math.max(0, Math.floor(streak * 0.7)); // harsh penalty for slow tap
+            streak = Math.max(0, Math.floor(streak - 5)); // harsh penalty for slow tap
         }
 
         streak = Math.min(TAP_TARGET, streak + 1);
