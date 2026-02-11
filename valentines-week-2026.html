@@ -1145,28 +1145,40 @@ function startThreeTaps(dayIndex) {
 
         
         /*HUG */
-       function startSimultaneous(dayIndex) {
+
+        function startSimultaneous(dayIndex) {
     const gameArea = document.getElementById('gameArea');
 
     gameArea.innerHTML =
         '<div class="instruction" id="instruction"></div>' +
         '<div class="message" id="message"></div>';
 
-    // prevent iOS text selection / callout
     gameArea.style.userSelect = 'none';
     gameArea.style.webkitUserSelect = 'none';
     gameArea.style.webkitTouchCallout = 'none';
     gameArea.style.touchAction = 'none';
 
-    const TAP_TARGET = 18;                 // slightly easier than 35, but still “continuous”
-    const MAX_GAP_MS = 5000;                // if taps slower than this, streak decays hard
-    const DECAY_MS = 1500;                 // glow fades out in ~1.5s when you stop
+    const REQUIRED_RUB_TIME = 20000; // 20 seconds required
+    const FULL_RESET_DELAY = 2000;   // 2s idle = full reset
+
+    let holding = false;
+    let warmTime = 0;
+    let lastContactTime = 0;
+    let lastMove = null;
     let completed = false;
+    let tapCooldown = false;
 
-    let streak = 0;
-    let lastTap = 0;
+    // Hold-burst + rub-state + toggle state
+    let holdBurstTimer = null;
+    let hasRubbed = false;
 
-    // Inject shiver animation once per page
+    // NEW: toggling 🥶 <-> 😲
+    let emojiIsSurprised = false;
+    let toggleTimer = null;
+
+    /* =========================
+       Shiver mechanism (exactly as your original)
+    ========================== */
     if (!document.getElementById('hugShiverStyle')) {
         const st = document.createElement('style');
         st.id = 'hugShiverStyle';
@@ -1184,7 +1196,9 @@ function startThreeTaps(dayIndex) {
         document.head.appendChild(st);
     }
 
-    // Warm background layer (behind face)
+    /* =========================
+       Softer warm background
+    ========================== */
     const warmBg = document.createElement('div');
     warmBg.style.cssText = `
         position:absolute;
@@ -1192,199 +1206,248 @@ function startThreeTaps(dayIndex) {
         z-index:1;
         pointer-events:none;
         opacity:0;
-        transform:scale(0.15);
-        transition:opacity 120ms linear, transform 120ms ease;
+        transform:scale(0.2);
+        transition:opacity 0.2s linear, transform 0.2s ease;
         background:radial-gradient(circle at center,
-            rgba(255,140,90,0.75) 0%,
-            rgba(255,80,80,0.55) 35%,
-            rgba(255,80,80,0.18) 60%,
-            transparent 78%);
+            rgba(255,120,60,0.55) 0%,
+            rgba(255,70,70,0.35) 40%,
+            rgba(255,50,50,0.15) 65%,
+            transparent 85%);
     `;
     gameArea.appendChild(warmBg);
 
-    // Center wrapper (above glow)
+    /* =========================
+       Center emoji
+    ========================== */
     const centerWrap = document.createElement('div');
     centerWrap.style.cssText = `
         position:absolute;
         left:50%;
         top:45%;
         transform:translate(-50%, -50%);
-        width:180px;
-        height:180px;
+        width:200px;
+        height:200px;
         display:flex;
         align-items:center;
         justify-content:center;
         z-index:5;
-        pointer-events:none; /* only emoji itself should catch taps */
+        pointer-events:none;
     `;
     gameArea.appendChild(centerWrap);
 
-    // Cold face (tap target)
     const face = document.createElement('div');
     face.className = 'sprite';
     face.textContent = '🥶';
-    face.style.fontSize = '5.3rem';
-    face.style.position = 'relative';
-    face.style.zIndex = '6';
+    face.style.fontSize = '5.5rem';
     face.style.pointerEvents = 'auto';
     face.style.touchAction = 'none';
-    face.style.webkitUserSelect = 'none';
-    face.style.userSelect = 'none';
+    face.style.animation = 'hugShiverY 75ms ease-in-out infinite'; // shiver on entry
     centerWrap.appendChild(face);
 
-    // Start strong shiver
-    function setShiverStrength(warmth01) {
-        // As warmth increases, shiver becomes slower + smaller
-        const amp = 8 - Math.round(warmth01 * 6);               // 8deg -> 2deg
-        const dur = Math.max(40, 75 - Math.round(warmth01 * 45)); // ~95ms -> ~55ms
-
-        // We can't parametrize keyframes directly, so we approximate by changing duration and swapping transforms
-        face.style.animation = `hugShiverY ${dur}ms ease-in-out infinite`;
-        // Adjust amplitude via a subtle scale + filter change, and by tightening perspective feel
-        face.style.filter = `drop-shadow(0 4px 10px rgba(0,0,0,0.18))`;
-        // Hack amplitude by wrapping in a tiny scale; the main perceived “shiver” comes from duration anyway.
-        face.style.transform = `perspective(600px) rotateY(0deg) scale(${1 - warmth01 * 0.06})`;
-        // To make amplitude smaller, we also reduce overall “motion feel” by slowing down as it warms.
-        // (If you want true amplitude control, we can use Web Animations API per frame—heavier.)
-    }
-
-    // Burst effects (bigger + louder)
-    function burstEffects(x, y) {
-        const effects = ['💗','💜','🔥','❤️','🔥','💖','🔥','💞','🔥','✨'];
-        for (let i = 0; i < 28; i++) {
-            const p = document.createElement('div');
-            p.className = 'particle';
-            p.textContent = effects[Math.floor(Math.random() * effects.length)];
-            p.style.left = x + 'px';
-            p.style.top = y + 'px';
-            p.style.fontSize = (1.3 + Math.random() * 2.0) + 'rem';
-            p.style.zIndex = '20';
-            gameArea.appendChild(p);
-
-            const tx = (Math.random() - 0.5) * 360;
-            const ty = -180 - Math.random() * 240;
-            const rot = (Math.random() - 0.5) * 720;
-
-            p.animate([
-                { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1 },
-                { transform: `translate(${tx}px, ${ty}px) scale(0.55) rotate(${rot}deg)`, opacity: 0 }
-            ], { duration: 1050 + Math.random() * 450, easing: 'cubic-bezier(0,.9,.2,1)' })
-             .onfinish = () => p.remove();
-        }
-    }
-
     function warmth01() {
-        return Math.max(0, Math.min(1, streak / TAP_TARGET));
+        return Math.min(1, warmTime / REQUIRED_RUB_TIME);
     }
 
-    function render() {
-        if (completed) return;
-
+    function updateVisuals() {
         const w = warmth01();
 
-        // Glow should absolutely appear and expand
         warmBg.style.opacity = w;
-        warmBg.style.transform = `scale(${0.15 + w * 3.2})`; // gets huge, fills page
+        warmBg.style.transform = `scale(${0.2 + w * 1.8})`; // half intensity
+        face.style.transform = `scale(${1 + w * 0.2})`;
 
-        // Shiver reduces with warmth
-        setShiverStrength(w);
-
-        requestAnimationFrame(render);
+        // IMPORTANT: during play we do NOT set 🤗 or 🫂 here.
+        // Emoji state is controlled by toggle logic + success.
+        // So updateVisuals should NOT overwrite face.textContent anymore.
     }
 
-    // Decay loop: when tapping stops, streak falls to 0 in ~1.5s
-    function decayLoop() {
-        if (completed) return;
+    function burstBig(x, y, count = 30) {
+        // Increased fire ratio
+        const emojis = ['🔥','🔥','🔥','🔥','🔥','💗','🔥','💖','🔥','❤️','🔥','💞','🔥','✨'];
 
-        const now = Date.now();
-        const since = now - lastTap;
+        for (let i = 0; i < count; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            p.style.left = x + 'px';
+            p.style.top = y + 'px';
+            p.style.fontSize = (1.4 + Math.random() * 2.5) + 'rem';
+            gameArea.appendChild(p);
 
-        if (since > 80 && streak > 0) {
-            // After you stop, ramp down over DECAY_MS
-            const drop = Math.ceil((since / DECAY_MS) * 2); // mild, not insane
-            if (since > 120) streak = Math.max(0, streak - drop);
+            const tx = (Math.random() - 0.5) * 300;
+            const ty = -180 - Math.random() * 200;
+
+            p.animate([
+                { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                { transform: `translate(${tx}px,${ty}px) scale(0.5)`, opacity: 0 }
+            ], { duration: 1000 }).onfinish = () => p.remove();
         }
-
-        // If fully cooled, ensure glow transitions out smoothly over 1.5s
-        if (streak === 0) {
-            warmBg.style.transition = 'opacity 1.5s ease, transform 1.5s ease';
-            warmBg.style.opacity = 0;
-            warmBg.style.transform = 'scale(0.15)';
-        } else {
-            warmBg.style.transition = 'opacity 120ms linear, transform 120ms ease';
-        }
-
-        requestAnimationFrame(decayLoop);
     }
 
-    function completeWarmup(x, y) {
+    function startHoldBurst() {
+        if (holdBurstTimer) return;
+
+        holdBurstTimer = setInterval(() => {
+            if (!holding || completed) return;
+            const x = lastMove?.x ?? (gameArea.getBoundingClientRect().left + gameArea.getBoundingClientRect().width / 2);
+            const y = lastMove?.y ?? (gameArea.getBoundingClientRect().top + gameArea.getBoundingClientRect().height / 2);
+            burstBig(x, y, 14);
+        }, 220);
+    }
+
+    function stopHoldBurst() {
+        if (holdBurstTimer) {
+            clearInterval(holdBurstTimer);
+            holdBurstTimer = null;
+        }
+    }
+
+    function setColdState() {
+        emojiIsSurprised = false;
+        face.textContent = '🥶';
+        face.style.animation = 'hugShiverY 75ms ease-in-out infinite';
+    }
+
+    function startToggleSurprise() {
+        if (toggleTimer) return;
+        // toggle 🥶 <-> 😲 while user keeps interacting (rub/hold)
+        toggleTimer = setInterval(() => {
+            if (completed) return;
+
+            // Only toggle if we're in "rubbed" mode and still within contact window
+            const now = Date.now();
+            if (!hasRubbed || (now - lastContactTime > FULL_RESET_DELAY)) return;
+
+            emojiIsSurprised = !emojiIsSurprised;
+            face.textContent = emojiIsSurprised ? '😳' : '🥶';
+
+            // Shiver only when cold face is showing
+            face.style.animation = emojiIsSurprised ? '' : 'hugShiverY 75ms ease-in-out infinite';
+        }, 800);
+    }
+
+    function stopToggleSurprise() {
+        if (toggleTimer) {
+            clearInterval(toggleTimer);
+            toggleTimer = null;
+        }
+    }
+
+    function complete(x, y) {
         completed = true;
+        stopHoldBurst();
+        stopToggleSurprise();
 
-        // Freeze visuals into “warm”
-        warmBg.style.transition = 'opacity 250ms linear, transform 250ms ease';
-        warmBg.style.opacity = 1;
-        warmBg.style.transform = 'scale(3.4)';
+        face.textContent = '🤗';
+        face.style.animation = 'heartbeat 1s ease-in-out infinite';
 
-        // Fade cold face out
-        face.style.animation = '';
-        face.style.transition = 'opacity 0.6s ease';
-        face.style.opacity = '0';
+        burstBig(x, y, 40);
+        createParticles(x, y);
+
+        showMessage("My hugs will always keep you warm 🫂\nHappy Hug Day babe! 🤗💗");
 
         setTimeout(() => {
-            face.textContent = '🤗';
-            face.style.opacity = '1';
-            face.style.transition = '';
-            face.style.animation = 'hugGlowPulse 700ms ease-in-out infinite';
-            burstEffects(x, y);
-
-            setTimeout(() => {
-                face.style.animation = 'heartbeat 1s ease-in-out infinite';
-                face.textContent = '🫂';
-                showMessage("My hugs will always keep you warm 🫂\nHappy Hug Day babe! 🤗💗");
-
-                setTimeout(() => {
-                    collectSprite(dayIndex, x, y);
-                }, 5000);
-
-            }, 3000);
-        }, 650);
+            collectSprite(dayIndex, x, y);
+        }, 4000);
     }
 
-    function onTap(e) {
+    /* =========================
+       Interaction logic
+    ========================== */
+    function onPointerDown(e) {
         if (completed) return;
-
-        // Tap must be on the emoji itself
         if (e.target !== face) return;
-
-        // stop iOS long-press stuff
         if (e.cancelable) e.preventDefault();
 
-        const now = Date.now();
-        const gap = now - lastTap;
-        lastTap = now;
+        holding = true;
+        lastContactTime = Date.now();
+        lastMove = { x: e.clientX, y: e.clientY };
 
-        // Keep it a continuous streak: tap too slow => streak doesn't grow meaningfully
-        if (gap > MAX_GAP_MS) {
-            streak = Math.max(0, Math.floor(streak - 2)); // harsh penalty for slow tap
+        // Strong single tap burst (no stacking)
+        if (!tapCooldown) {
+            burstBig(e.clientX, e.clientY, 34);
+            warmBg.style.opacity = 0.4;
+            warmBg.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                warmBg.style.opacity = warmth01();
+                warmBg.style.transform = `scale(${0.2 + warmth01() * 1.8})`;
+            }, 400);
+
+            tapCooldown = true;
+            setTimeout(() => tapCooldown = false, 2000);
         }
 
-        streak = Math.min(TAP_TARGET, streak + 1);
-
-        burstEffects(e.clientX, e.clientY);
-
-        if (streak >= TAP_TARGET) {
-            completeWarmup(e.clientX, e.clientY);
-        }
+        startHoldBurst();
     }
 
-    // Support iOS reliably: pointer + touch
-    face.addEventListener('pointerdown', onTap, { passive: false });
-    face.addEventListener('touchstart', onTap, { passive: false });
+    function onPointerMove(e) {
+        if (!holding || completed) return;
+        if (e.target !== face) return;
 
-    // Kick off loops
-    render();
-    decayLoop();
+        const dx = e.clientX - lastMove.x;
+        const dy = e.clientY - lastMove.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // First meaningful rub: immediately switch to 😲 and start toggling
+        if (!hasRubbed && distance > 4) {
+            hasRubbed = true;
+            emojiIsSurprised = true;
+            face.textContent = '😳';
+            face.style.animation = ''; // surprised doesn't shiver
+            startToggleSurprise();
+        }
+
+        if (distance > 4) {
+            warmTime += distance * 8; // slower heat gain
+        }
+
+        lastMove = { x: e.clientX, y: e.clientY };
+        lastContactTime = Date.now();
+    }
+
+    function onPointerUp() {
+        holding = false;
+        stopHoldBurst();
+        // toggling continues as long as they resume within 2s; loop will reset if not
+    }
+
+    face.addEventListener('pointerdown', onPointerDown, { passive: false });
+    face.addEventListener('pointermove', onPointerMove, { passive: true });
+    face.addEventListener('pointerup', onPointerUp, { passive: true });
+    face.addEventListener('pointercancel', onPointerUp, { passive: true });
+
+    /* =========================
+       Main loop
+    ========================== */
+    function loop() {
+        if (completed) return;
+
+        const now = Date.now();
+
+        if (!holding) {
+            warmTime -= 60; // drain when not rubbing
+        }
+
+        if (now - lastContactTime > FULL_RESET_DELAY) {
+            warmTime = 0;
+            hasRubbed = false;
+            stopToggleSurprise();
+            setColdState();
+        }
+
+        warmTime = Math.max(0, warmTime);
+
+        updateVisuals();
+
+        if (warmTime >= REQUIRED_RUB_TIME) {
+            complete(lastMove?.x || 0, lastMove?.y || 0);
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    loop();
 }
+
 
 
         /*Kiss*/
