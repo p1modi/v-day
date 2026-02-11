@@ -1329,7 +1329,6 @@ function startThreeTaps(dayIndex) {
           HUG 
         ========================================================= */
 
-
 function startSimultaneous(dayIndex) {
     const gameArea = document.getElementById('gameArea');
 
@@ -1342,11 +1341,10 @@ function startSimultaneous(dayIndex) {
     gameArea.style.webkitTouchCallout = 'none';
     gameArea.style.touchAction = 'none';
 
-    const REQUIRED_RUB_TIME = 10000; // 10 seconds
-    const FULL_RESET_DELAY = 2000;   // 2s no contact → full reset
+    const REQUIRED_RUB_TIME = 20000; // 20 seconds required
+    const FULL_RESET_DELAY = 2000;   // 2s idle = full reset
 
     let holding = false;
-    let rubbing = false;
     let warmTime = 0;
     let lastContactTime = 0;
     let lastMove = null;
@@ -1354,7 +1352,7 @@ function startSimultaneous(dayIndex) {
     let tapCooldown = false;
 
     /* =========================
-       Warm background
+       Softer warm background
     ========================== */
     const warmBg = document.createElement('div');
     warmBg.style.cssText = `
@@ -1366,10 +1364,10 @@ function startSimultaneous(dayIndex) {
         transform:scale(0.2);
         transition:opacity 0.2s linear, transform 0.2s ease;
         background:radial-gradient(circle at center,
-            rgba(255,120,60,0.9) 0%,
-            rgba(255,70,70,0.6) 35%,
-            rgba(255,50,50,0.25) 60%,
-            transparent 80%);
+            rgba(255,120,60,0.55) 0%,
+            rgba(255,70,70,0.35) 40%,
+            rgba(255,50,50,0.15) 65%,
+            transparent 85%);
     `;
     gameArea.appendChild(warmBg);
 
@@ -1406,48 +1404,29 @@ function startSimultaneous(dayIndex) {
         const w = warmth01();
 
         warmBg.style.opacity = w;
-        warmBg.style.transform = `scale(${0.2 + w * 3})`;
+        warmBg.style.transform = `scale(${0.2 + w * 1.8})`; // half intensity
 
         face.style.transform = `scale(${1 + w * 0.2})`;
 
         if (w > 0.3) face.textContent = '😳';
-        if (w > 0.6) face.textContent = '😊';
-        if (w > 0.85) face.textContent = '🤗';
+        if (w > 0.6) face.textContent = '🤗';
+        if (w > 0.9) face.textContent = '🫂';
     }
 
-    function burstSmall(x, y) {
-        const emojis = ['💗','✨'];
-        for (let i = 0; i < 6; i++) {
+    function burstBig(x, y) {
+        const emojis = ['💗','🔥','💖','❤️','💞','✨','🔥','💗','🔥'];
+
+        for (let i = 0; i < 30; i++) {
             const p = document.createElement('div');
             p.className = 'particle';
             p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
             p.style.left = x + 'px';
             p.style.top = y + 'px';
-            gameArea.appendChild(p);
-
-            const tx = (Math.random()-0.5)*120;
-            const ty = -80 - Math.random()*80;
-
-            p.animate([
-                { transform:'translate(0,0)', opacity:1 },
-                { transform:`translate(${tx}px,${ty}px)`, opacity:0 }
-            ], { duration:800 }).onfinish = () => p.remove();
-        }
-    }
-
-    function burstBig(x, y, intensity=1) {
-        const emojis = ['💗','🔥','💖','❤️','🔥','💞'];
-        for (let i = 0; i < 18 * intensity; i++) {
-            const p = document.createElement('div');
-            p.className = 'particle';
-            p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
-            p.style.left = x + 'px';
-            p.style.top = y + 'px';
-            p.style.fontSize = (1.2 + Math.random()*2) + 'rem';
+            p.style.fontSize = (1.4 + Math.random()*2.5) + 'rem';
             gameArea.appendChild(p);
 
             const tx = (Math.random()-0.5)*300;
-            const ty = -150 - Math.random()*200;
+            const ty = -180 - Math.random()*200;
 
             p.animate([
                 { transform:'translate(0,0) scale(1)', opacity:1 },
@@ -1462,7 +1441,7 @@ function startSimultaneous(dayIndex) {
         face.textContent = '🫂';
         face.style.animation = 'heartbeat 1s ease-in-out infinite';
 
-        burstBig(x, y, 2);
+        burstBig(x, y);
         createParticles(x, y);
 
         showMessage("My hugs will always keep you warm 🫂\nHappy Hug Day babe! 🤗💗");
@@ -1478,16 +1457,21 @@ function startSimultaneous(dayIndex) {
 
     function onPointerDown(e) {
         if (completed) return;
-
         if (e.target !== face) return;
 
         holding = true;
         lastContactTime = Date.now();
         lastMove = { x: e.clientX, y: e.clientY };
 
-        // Single tap flare
+        // Strong single tap burst (no stacking)
         if (!tapCooldown) {
-            burstSmall(e.clientX, e.clientY);
+            burstBig(e.clientX, e.clientY);
+            warmBg.style.opacity = 0.4;
+            warmBg.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                warmBg.style.opacity = warmth01();
+                warmBg.style.transform = `scale(${0.2 + warmth01()*1.8})`;
+            }, 400);
             tapCooldown = true;
             setTimeout(() => tapCooldown = false, 2000);
         }
@@ -1501,10 +1485,8 @@ function startSimultaneous(dayIndex) {
         const dy = e.clientY - lastMove.y;
         const distance = Math.sqrt(dx*dx + dy*dy);
 
-        if (distance > 4) { // actual rubbing
-            rubbing = true;
-            warmTime += distance * 15; // tune heat gain here
-            burstSmall(e.clientX, e.clientY);
+        if (distance > 4) {
+            warmTime += distance * 8; // slower heat gain
         }
 
         lastMove = { x: e.clientX, y: e.clientY };
@@ -1513,7 +1495,6 @@ function startSimultaneous(dayIndex) {
 
     function onPointerUp() {
         holding = false;
-        rubbing = false;
     }
 
     face.addEventListener('pointerdown', onPointerDown);
@@ -1529,12 +1510,10 @@ function startSimultaneous(dayIndex) {
 
         const now = Date.now();
 
-        // Drain if not holding
         if (!holding) {
-            warmTime -= 50;
+            warmTime -= 60; // drain when not rubbing
         }
 
-        // Full reset after 2s no contact
         if (now - lastContactTime > FULL_RESET_DELAY) {
             warmTime = 0;
         }
@@ -1552,6 +1531,7 @@ function startSimultaneous(dayIndex) {
 
     loop();
 }
+
 
 
         
