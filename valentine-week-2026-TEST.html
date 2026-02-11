@@ -1329,7 +1329,8 @@ function startThreeTaps(dayIndex) {
           HUG 
         ========================================================= */
 
-function startSimultaneous(dayIndex) {
+
+        function startSimultaneous(dayIndex) {
     const gameArea = document.getElementById('gameArea');
 
     gameArea.innerHTML =
@@ -1340,117 +1341,149 @@ function startSimultaneous(dayIndex) {
     gameArea.style.webkitUserSelect = 'none';
     gameArea.style.webkitTouchCallout = 'none';
 
-    const instruction = document.getElementById('instruction');
-    instruction.textContent = "Tap to warm the hug 🤍";
+    const TAP_TARGET = 35; // preset continuous taps required
+    let tapCount = 0;
+    let warmth = 0;
+    let lastTapTime = Date.now();
+    let completed = false;
 
-    // Cold emoji
-    const face = document.createElement('div');
-    face.className = 'sprite';
-    face.textContent = '🥶';
-    face.style.left = '50%';
-    face.style.top = '45%';
-    face.style.transform = 'translate(-50%, -50%)';
-    gameArea.appendChild(face);
-
-    // Warm glow layer
-    const glow = document.createElement('div');
-    glow.style.cssText = `
+    // Container for centered alignment
+    const centerWrap = document.createElement('div');
+    centerWrap.style.cssText = `
         position:absolute;
         left:50%;
         top:45%;
+        transform:translate(-50%, -50%);
+        width:120px;
+        height:120px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        pointer-events:none;
+    `;
+    gameArea.appendChild(centerWrap);
+
+    // Glow (behind emoji)
+    const glow = document.createElement('div');
+    glow.style.cssText = `
+        position:absolute;
         width:120px;
         height:120px;
         border-radius:50%;
-        transform:translate(-50%, -50%) scale(0.5);
-        background:radial-gradient(circle, rgba(255,120,120,0.5) 0%, rgba(255,120,120,0.2) 40%, transparent 70%);
-        pointer-events:none;
+        background:radial-gradient(circle, rgba(255,120,120,0.55) 0%, rgba(255,120,120,0.25) 40%, transparent 70%);
+        transform:scale(0.5);
         opacity:0.4;
     `;
-    gameArea.appendChild(glow);
+    centerWrap.appendChild(glow);
 
-    let warmth = 0;
-    let tapping = false;
-    let completed = false;
-    let lastTapTime = Date.now();
+    // Cold face
+    const face = document.createElement('div');
+    face.className = 'sprite';
+    face.textContent = '🥶';
+    face.style.position = 'relative';
+    face.style.fontSize = '4.5rem';
+    centerWrap.appendChild(face);
 
     function updateVisuals() {
-        const scale = 0.5 + (warmth / 100) * 1.2;
-        glow.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        warmth = tapCount / TAP_TARGET;
 
-        // Pulse speed increases with warmth (polish #2)
-        const pulseSpeed = 1.2 - (warmth / 100) * 0.7;
+        // Glow grows
+        const scale = 0.5 + warmth * 1.4;
+        glow.style.transform = `scale(${scale})`;
+        glow.style.opacity = 0.4 + warmth * 0.6;
+
+        // Shiver intensity reduces
+        const jitter = (1 - warmth) * 6;
+        face.style.transform =
+            `translate(${(Math.random() - 0.5) * jitter}px, ${(Math.random() - 0.5) * jitter}px)`;
+
+        // Pulse speed increases slightly
+        const pulseSpeed = 1.2 - warmth * 0.7;
         glow.style.animation = `heartbeat ${pulseSpeed}s ease-in-out infinite`;
     }
 
-    function drainWarmth() {
+    function drainCheck() {
         if (completed) return;
 
         const now = Date.now();
-        if (now - lastTapTime > 250) {
-            warmth -= 0.4; // slow drain
-            if (warmth < 0) warmth = 0;
 
-            // Near-fail safety (polish #3)
-            if (warmth > 90 && now - lastTapTime > 800) {
-                warmth = 70;
-            }
-
-            updateVisuals();
+        // If tapping stops for too long, reduce tap streak slightly
+        if (now - lastTapTime > 600 && tapCount > 0) {
+            tapCount -= 1;
+            if (tapCount < 0) tapCount = 0;
         }
 
-        requestAnimationFrame(drainWarmth);
+        updateVisuals();
+        requestAnimationFrame(drainCheck);
     }
 
     function tapHandler(e) {
         if (completed) return;
 
-        warmth += 4;
-        if (warmth > 100) warmth = 100;
         lastTapTime = Date.now();
+        tapCount++;
 
-        // small warmth particles
-        createHearts(e.clientX, e.clientY);
+        // Hearts + fire burst
+        const effects = ['💗','💜','🔥','❤️','🔥'];
+        for (let i = 0; i < 8; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.textContent = effects[Math.floor(Math.random() * effects.length)];
+            p.style.left = e.clientX + 'px';
+            p.style.top = e.clientY + 'px';
+            gameArea.appendChild(p);
+
+            const tx = (Math.random() - 0.5) * 180;
+            const ty = -80 - Math.random() * 120;
+
+            p.animate([
+                { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                { transform: `translate(${tx}px, ${ty}px) scale(0.5)`, opacity: 0 }
+            ], { duration: 900, easing: 'ease-out' }).onfinish = () => p.remove();
+        }
 
         updateVisuals();
 
-        if (warmth >= 100) {
-            completeHug(e.clientX, e.clientY);
+        if (tapCount >= TAP_TARGET) {
+            completeWarmup(e.clientX, e.clientY);
         }
     }
 
-    function completeHug(x, y) {
+    function completeWarmup(x, y) {
         completed = true;
 
-        face.textContent = '🫂';
-        face.style.animation = 'heartbeat 0.8s ease-in-out infinite';
-
-        // Final squeeze effect (polish #4)
-        gameArea.animate(
-            [
-                { transform: 'scale(1)' },
-                { transform: 'scale(1.05)' },
-                { transform: 'scale(1)' }
-            ],
-            { duration: 500, easing: 'ease-in-out' }
-        );
-
-        createParticles(x, y);
+        // Fade cold face
+        face.style.transition = 'opacity 0.6s ease';
+        face.style.opacity = '0';
 
         setTimeout(() => {
-            showMessage("All warm now. Happy Hug Day babe 🤗💜");
+            face.textContent = '😊';
+            face.style.opacity = '1';
+            face.style.transform = 'translate(0,0)';
+            face.style.animation = 'heartbeat 0.8s ease-in-out infinite';
 
+            createParticles(x, y);
+
+            // After 3s → replace with hug emoji
             setTimeout(() => {
-                collectSprite(dayIndex, x, y);
-            }, 5000);
+                face.textContent = '🫂';
+                face.style.animation = 'heartbeat 0.9s ease-in-out infinite';
 
-        }, 1000);
+                showMessage("All warm now. Happy Hug Day babe 🤗💜");
+
+                setTimeout(() => {
+                    collectSprite(dayIndex, x, y);
+                }, 5000);
+
+            }, 3000);
+
+        }, 700);
     }
 
     gameArea.addEventListener('pointerdown', tapHandler);
 
-    drainWarmth();
+    drainCheck();
 }
-
 
 
         
