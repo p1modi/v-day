@@ -1330,7 +1330,7 @@ function startThreeTaps(dayIndex) {
         ========================================================= */
 
 
-        function startSimultaneous(dayIndex) {
+       function startSimultaneous(dayIndex) {
     const gameArea = document.getElementById('gameArea');
 
     gameArea.innerHTML =
@@ -1341,107 +1341,112 @@ function startThreeTaps(dayIndex) {
     gameArea.style.webkitUserSelect = 'none';
     gameArea.style.webkitTouchCallout = 'none';
 
-    const TAP_TARGET = 35; // preset continuous taps required
+    const TAP_TARGET = 35;
     let tapCount = 0;
-    let warmth = 0;
     let lastTapTime = Date.now();
     let completed = false;
 
-    // Container for centered alignment
+    // Large background warmth layer
+    const warmBg = document.createElement('div');
+    warmBg.style.cssText = `
+        position:absolute;
+        inset:0;
+        background:radial-gradient(circle at center, rgba(255,120,80,0.6) 0%, rgba(255,80,80,0.4) 40%, transparent 70%);
+        transform:scale(0.2);
+        opacity:0;
+        pointer-events:none;
+        transition:transform 0.2s ease, opacity 0.2s ease;
+    `;
+    gameArea.appendChild(warmBg);
+
+    // Center wrapper
     const centerWrap = document.createElement('div');
     centerWrap.style.cssText = `
         position:absolute;
         left:50%;
         top:45%;
         transform:translate(-50%, -50%);
-        width:120px;
-        height:120px;
+        width:150px;
+        height:150px;
         display:flex;
         align-items:center;
         justify-content:center;
-        pointer-events:none;
     `;
     gameArea.appendChild(centerWrap);
-
-    // Glow (behind emoji)
-    const glow = document.createElement('div');
-    glow.style.cssText = `
-        position:absolute;
-        width:120px;
-        height:120px;
-        border-radius:50%;
-        background:radial-gradient(circle, rgba(255,120,120,0.55) 0%, rgba(255,120,120,0.25) 40%, transparent 70%);
-        transform:scale(0.5);
-        opacity:0.4;
-    `;
-    centerWrap.appendChild(glow);
 
     // Cold face
     const face = document.createElement('div');
     face.className = 'sprite';
     face.textContent = '🥶';
+    face.style.fontSize = '5rem';
     face.style.position = 'relative';
-    face.style.fontSize = '4.5rem';
     centerWrap.appendChild(face);
 
     function updateVisuals() {
-        warmth = tapCount / TAP_TARGET;
+        const warmth = tapCount / TAP_TARGET;
 
-        // Glow grows
-        const scale = 0.5 + warmth * 1.4;
-        glow.style.transform = `scale(${scale})`;
-        glow.style.opacity = 0.4 + warmth * 0.6;
+        // Background warmth expansion
+        warmBg.style.opacity = warmth;
+        warmBg.style.transform = `scale(${0.2 + warmth * 2.5})`;
 
-        // Shiver intensity reduces
-        const jitter = (1 - warmth) * 6;
+        // Shiver reduces as warmth increases
+        const jitter = (1 - warmth) * 8;
         face.style.transform =
             `translate(${(Math.random() - 0.5) * jitter}px, ${(Math.random() - 0.5) * jitter}px)`;
-
-        // Pulse speed increases slightly
-        const pulseSpeed = 1.2 - warmth * 0.7;
-        glow.style.animation = `heartbeat ${pulseSpeed}s ease-in-out infinite`;
     }
 
-    function drainCheck() {
+    function drainWarmth() {
         if (completed) return;
 
         const now = Date.now();
 
-        // If tapping stops for too long, reduce tap streak slightly
-        if (now - lastTapTime > 600 && tapCount > 0) {
-            tapCount -= 1;
+        if (now - lastTapTime > 300 && tapCount > 0) {
+            tapCount -= 2;
             if (tapCount < 0) tapCount = 0;
+
+            // Fade warmth out over ~1.5s
+            if (tapCount === 0) {
+                warmBg.style.transition = 'transform 1.5s ease, opacity 1.5s ease';
+                warmBg.style.opacity = 0;
+                warmBg.style.transform = 'scale(0.2)';
+            }
         }
 
         updateVisuals();
-        requestAnimationFrame(drainCheck);
+        requestAnimationFrame(drainWarmth);
+    }
+
+    function burstEffects(x, y) {
+        const effects = ['💗','💜','🔥','❤️','🔥','💖','🔥'];
+        for (let i = 0; i < 20; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.textContent = effects[Math.floor(Math.random() * effects.length)];
+            p.style.left = x + 'px';
+            p.style.top = y + 'px';
+            p.style.fontSize = (1.2 + Math.random() * 1.5) + 'rem';
+            gameArea.appendChild(p);
+
+            const tx = (Math.random() - 0.5) * 300;
+            const ty = -150 - Math.random() * 200;
+
+            p.animate([
+                { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                { transform: `translate(${tx}px, ${ty}px) scale(0.6)`, opacity: 0 }
+            ], { duration: 1200, easing: 'ease-out' }).onfinish = () => p.remove();
+        }
     }
 
     function tapHandler(e) {
         if (completed) return;
 
+        // Only count taps if directly on emoji
+        if (e.target !== face) return;
+
         lastTapTime = Date.now();
         tapCount++;
 
-        // Hearts + fire burst
-        const effects = ['💗','💜','🔥','❤️','🔥'];
-        for (let i = 0; i < 8; i++) {
-            const p = document.createElement('div');
-            p.className = 'particle';
-            p.textContent = effects[Math.floor(Math.random() * effects.length)];
-            p.style.left = e.clientX + 'px';
-            p.style.top = e.clientY + 'px';
-            gameArea.appendChild(p);
-
-            const tx = (Math.random() - 0.5) * 180;
-            const ty = -80 - Math.random() * 120;
-
-            p.animate([
-                { transform: 'translate(0,0) scale(1)', opacity: 1 },
-                { transform: `translate(${tx}px, ${ty}px) scale(0.5)`, opacity: 0 }
-            ], { duration: 900, easing: 'ease-out' }).onfinish = () => p.remove();
-        }
-
+        burstEffects(e.clientX, e.clientY);
         updateVisuals();
 
         if (tapCount >= TAP_TARGET) {
@@ -1452,24 +1457,22 @@ function startThreeTaps(dayIndex) {
     function completeWarmup(x, y) {
         completed = true;
 
-        // Fade cold face
         face.style.transition = 'opacity 0.6s ease';
         face.style.opacity = '0';
 
         setTimeout(() => {
-            face.textContent = '😊';
+            face.textContent = '🤗';
             face.style.opacity = '1';
             face.style.transform = 'translate(0,0)';
             face.style.animation = 'heartbeat 0.8s ease-in-out infinite';
 
-            createParticles(x, y);
+            burstEffects(x, y);
 
-            // After 3s → replace with hug emoji
             setTimeout(() => {
                 face.textContent = '🫂';
-                face.style.animation = 'heartbeat 0.9s ease-in-out infinite';
+                face.style.animation = 'heartbeat 1s ease-in-out infinite';
 
-                showMessage("All warm now. Happy Hug Day babe 🤗💜");
+                showMessage("My hugs will always keep you warm 🫂<br>Happy Hug Day babe! 🤗💗");
 
                 setTimeout(() => {
                     collectSprite(dayIndex, x, y);
@@ -1480,9 +1483,9 @@ function startThreeTaps(dayIndex) {
         }, 700);
     }
 
-    gameArea.addEventListener('pointerdown', tapHandler);
+    face.addEventListener('pointerdown', tapHandler);
 
-    drainCheck();
+    drainWarmth();
 }
 
 
