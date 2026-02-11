@@ -1351,12 +1351,16 @@ function startSimultaneous(dayIndex) {
     let completed = false;
     let tapCooldown = false;
 
-    // NEW: for hold-burst + instant emoji switch on first rub
+    // Hold-burst + rub-state + toggle state
     let holdBurstTimer = null;
     let hasRubbed = false;
 
+    // NEW: toggling 🥶 <-> 😲
+    let emojiIsSurprised = false;
+    let toggleTimer = null;
+
     /* =========================
-       Restore shiver mechanism (exactly like your original)
+       Shiver mechanism (exactly as your original)
     ========================== */
     if (!document.getElementById('hugShiverStyle')) {
         const st = document.createElement('style');
@@ -1420,8 +1424,7 @@ function startSimultaneous(dayIndex) {
     face.style.fontSize = '5.5rem';
     face.style.pointerEvents = 'auto';
     face.style.touchAction = 'none';
-    // Start shivering immediately
-    face.style.animation = 'hugShiverY 75ms ease-in-out infinite';
+    face.style.animation = 'hugShiverY 75ms ease-in-out infinite'; // shiver on entry
     centerWrap.appendChild(face);
 
     function warmth01() {
@@ -1433,17 +1436,11 @@ function startSimultaneous(dayIndex) {
 
         warmBg.style.opacity = w;
         warmBg.style.transform = `scale(${0.2 + w * 1.8})`; // half intensity
-
         face.style.transform = `scale(${1 + w * 0.2})`;
 
-        // Only switch based on warmth AFTER first rub triggers instant switch
-        if (!hasRubbed) {
-            // keep cold face until rub happens (but still allow shiver)
-            face.textContent = '🥶';
-        } else {
-            if (w > 0.9) face.textContent = '🫂';
-            else face.textContent = '🤗';
-        }
+        // IMPORTANT: during play we do NOT set 🤗 or 🫂 here.
+        // Emoji state is controlled by toggle logic + success.
+        // So updateVisuals should NOT overwrite face.textContent anymore.
     }
 
     function burstBig(x, y, count = 30) {
@@ -1474,11 +1471,10 @@ function startSimultaneous(dayIndex) {
 
         holdBurstTimer = setInterval(() => {
             if (!holding || completed) return;
-            // emit constant bursts while holding
             const x = lastMove?.x ?? (gameArea.getBoundingClientRect().left + gameArea.getBoundingClientRect().width / 2);
             const y = lastMove?.y ?? (gameArea.getBoundingClientRect().top + gameArea.getBoundingClientRect().height / 2);
             burstBig(x, y, 14);
-        }, 220); // constant "shower"
+        }, 220);
     }
 
     function stopHoldBurst() {
@@ -1488,11 +1484,43 @@ function startSimultaneous(dayIndex) {
         }
     }
 
+    function setColdState() {
+        emojiIsSurprised = false;
+        face.textContent = '🥶';
+        face.style.animation = 'hugShiverY 75ms ease-in-out infinite';
+    }
+
+    function startToggleSurprise() {
+        if (toggleTimer) return;
+        // toggle 🥶 <-> 😲 while user keeps interacting (rub/hold)
+        toggleTimer = setInterval(() => {
+            if (completed) return;
+
+            // Only toggle if we're in "rubbed" mode and still within contact window
+            const now = Date.now();
+            if (!hasRubbed || (now - lastContactTime > FULL_RESET_DELAY)) return;
+
+            emojiIsSurprised = !emojiIsSurprised;
+            face.textContent = emojiIsSurprised ? '😲' : '🥶';
+
+            // Shiver only when cold face is showing
+            face.style.animation = emojiIsSurprised ? '' : 'hugShiverY 75ms ease-in-out infinite';
+        }, 260);
+    }
+
+    function stopToggleSurprise() {
+        if (toggleTimer) {
+            clearInterval(toggleTimer);
+            toggleTimer = null;
+        }
+    }
+
     function complete(x, y) {
         completed = true;
         stopHoldBurst();
+        stopToggleSurprise();
 
-        face.textContent = '🫂';
+        face.textContent = '🤗';
         face.style.animation = 'heartbeat 1s ease-in-out infinite';
 
         burstBig(x, y, 40);
@@ -1531,7 +1559,6 @@ function startSimultaneous(dayIndex) {
             setTimeout(() => tapCooldown = false, 2000);
         }
 
-        // NEW: constant burst while holding
         startHoldBurst();
     }
 
@@ -1543,10 +1570,13 @@ function startSimultaneous(dayIndex) {
         const dy = e.clientY - lastMove.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Tap+hold+rub: on first meaningful movement, instantly switch to second emoji in sequence
+        // First meaningful rub: immediately switch to 😲 and start toggling
         if (!hasRubbed && distance > 4) {
             hasRubbed = true;
-            face.textContent = '🤗'; // immediate switch on first rub
+            emojiIsSurprised = true;
+            face.textContent = '😲';
+            face.style.animation = ''; // surprised doesn't shiver
+            startToggleSurprise();
         }
 
         if (distance > 4) {
@@ -1560,6 +1590,7 @@ function startSimultaneous(dayIndex) {
     function onPointerUp() {
         holding = false;
         stopHoldBurst();
+        // toggling continues as long as they resume within 2s; loop will reset if not
     }
 
     face.addEventListener('pointerdown', onPointerDown, { passive: false });
@@ -1581,17 +1612,12 @@ function startSimultaneous(dayIndex) {
 
         if (now - lastContactTime > FULL_RESET_DELAY) {
             warmTime = 0;
-            hasRubbed = false;              // reset sequence if fully cold
-            face.textContent = '🥶';
-            face.style.animation = 'hugShiverY 75ms ease-in-out infinite';
+            hasRubbed = false;
+            stopToggleSurprise();
+            setColdState();
         }
 
         warmTime = Math.max(0, warmTime);
-
-        // Ensure shiver stops once rubbing has begun (optional but feels right)
-        if (hasRubbed && face.style.animation.includes('hugShiverY')) {
-            face.style.animation = ''; // stop shiver once you "warm" them
-        }
 
         updateVisuals();
 
